@@ -60,7 +60,7 @@ def fiberextract(filename, distmodel, fibermodel, outname, opts):
     
 def throughput_fiberextract(Felist, args):
     nifu = len(Felist)
-    nw = len(Felist[0,:])
+    nw = len(Felist[0][0,:])
     xp = np.linspace(0, 1, num=nw)
     nbspline = 51
     a = np.linspace(0, 1, nbspline)
