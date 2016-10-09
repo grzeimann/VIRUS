@@ -97,7 +97,8 @@ def throughput_fiberextract(Felist, args):
         fig = plt.figure(figsize=(8, 6))
         avgB = biweight_location(B,axis=(0,))
         for i in xrange(nifu):
-            plt.plot(xp, B[i,:]/avgB, color=colors[i,0:3], alpha=0.9)
+            with np.errstate(divide='ignore'):
+                plt.plot(xp, B[i,:]/avgB, color=colors[i,0:3], alpha=0.9)
         plt.xticks([])
         plt.xlabel('Wavelength')
         plt.ylabel('Normalized Units')
@@ -113,8 +114,9 @@ def normalize_fiberextract(Felist, Fe_e_list, Fenames, B, args):
     for i in xrange(nifu):
         outfile = op.join(op.dirname(Fenames[i]),'n'+op.basename(Fenames[i]))
         outfile_e = op.join(op.dirname(Fenames[i]),'e.n'+op.basename(Fenames[i]))
-        norm = Felist[i][0].data / B[i,:]
-        norm_e = Fe_e_list[i][0].data / B[i,:]
+        with np.errstate(divide='ignore'):
+            norm = np.where(B[i,:]!=0., Felist[i][0].data / B[i,:], 0.)
+            norm_e = np.where(B[i,:]!=0., Fe_e_list[i][0].data / B[i,:], 0.)
         Felist[i][0].data = norm
         Fe_e_list[i][0].data = norm_e
         Felist[i][0].header['HISTORY'] = 'Divided by Smoothed Average IFU Spectrum'
