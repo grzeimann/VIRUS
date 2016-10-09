@@ -62,7 +62,7 @@ def throughput_fiberextract(Felist, args):
     nifu = len(Felist)
     nw = len(Felist[0][0,:])
     xp = np.linspace(0, 1, num=nw)
-    nbspline = 51
+    nbspline = 12
     a = np.linspace(0, 1, nbspline)
     knots = np.hstack([0,0,np.vstack([a,a]).T.ravel(),1,1])
     b = Bspline(knots, 3)
