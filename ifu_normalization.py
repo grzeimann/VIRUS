@@ -7,15 +7,16 @@ Script for quick look at wavelenght solution
 """
 from __future__ import print_function
 
-import matplotlib.pyplot as plt
-import numpy as np
-
 import sys
 import os
-from astropy.io import fits
+import time
 
+import matplotlib.pyplot as plt
+import numpy as np
 import argparse as ap
 import os.path as op
+
+from astropy.io import fits
 from os import environ
 from utils import biweight_location
 from bspline import Bspline
@@ -68,14 +69,17 @@ def throughput_fiberextract(Felist, args):
     b = Bspline(knots, 3)
     basis = np.array([b(xi) for xi in xp])
     B = np.zeros((nifu,nw))
-    print(nifu)
     for i in xrange(nifu):
+        if args.debug:
+            t1 = time.time()
         Felist[i][np.isnan(Felist[i])] = 0.0
         spec = biweight_location(Felist[i],axis=(0,))
         sol = np.linalg.lstsq(basis, spec)[0]
         B[i,:] = np.dot(basis,sol)
-        if args.plot:
-            print(i)
+        if args.debug:
+            t2 = time.time()
+            print("Time taken for Fitting %i: %0.2f s" %(i,t2-t1))
+        if args.plot:  
             pltfile = op.join(args.outfolder, 'spectrum_%i.pdf' %i)
             fig = plt.figure(figsize=(8, 6))
             plt.plot(xp, spec)
@@ -86,6 +90,9 @@ def throughput_fiberextract(Felist, args):
             plt.xlim([0, 1])
             fig.savefig(pltfile, dpi=150)
             plt.close()
+            if args.debug:
+                t3 = time.time()
+                print("Time taken for Plotting %i: %0.2f s" %(i,t3-t2))
 
 
 def plot_fiberextract(fibextract, psize, fsize, outfile):
@@ -188,6 +195,10 @@ def parse_arg(args):
     p.add_argument('-p', '--plot', dest='plot', 
                    action="count", default=0,
                    help="""Plot Fiber extracted twighlights vs. solar spectrum.""") 
+    p.add_argument('-D', '--debug', dest='debug', 
+                   action="count", default=0,
+                   help="""Debug.""") 
+
                    
     args = p.parse_args(args=args)
                
