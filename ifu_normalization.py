@@ -17,7 +17,7 @@ from astropy.io import fits
 import argparse as ap
 import os.path as op
 from os import environ
-from .utils import biweight_location
+from utils import biweight_location
 from bspline import Bspline
 
 virus_config = "/work/03946/hetdex/maverick/virus_config"
