@@ -90,20 +90,25 @@ def throughput_fiberextract(Felist, args):
 #            plt.xlim([0, 1])
 #            fig.savefig(pltfile, dpi=150)
 #            plt.close()
-    norm = plt.Normalize()
-    colors = plt.cm.viridis(norm(np.arange(nifu)+1))
-    pltfile = op.join(args.outfolder, 'IFU_average_spectra.pdf')
-    fig = plt.figure(figsize=(8, 6))
-    avgB = biweight_location(B,axis=(0,))
-    for i in xrange(nifu):
-        plt.plot(xp, B[i,:]/avgB, color=colors[i,0:3], alpha=0.9)
-    plt.xticks([])
-    plt.xlabel('Wavelength')
-    plt.ylabel('Normalized Units')
-    plt.xlim([0, 1])
-    plt.ylim([0.5,1.5])
-    fig.savefig(pltfile, dpi=150)
-    plt.close()
+    if args.plot:
+        norm = plt.Normalize()
+        colors = plt.cm.viridis(norm(np.arange(nifu)+1))
+        pltfile = op.join(args.outfolder, 'IFU_average_spectra.pdf')
+        fig = plt.figure(figsize=(8, 6))
+        avgB = biweight_location(B,axis=(0,))
+        for i in xrange(nifu):
+            plt.plot(xp, B[i,:]/avgB, color=colors[i,0:3], alpha=0.9)
+        plt.xticks([])
+        plt.xlabel('Wavelength')
+        plt.ylabel('Normalized Units')
+        plt.xlim([0, 1])
+        plt.ylim([0.5,1.5])
+        fig.savefig(pltfile, dpi=150)
+        plt.close()
+    return B
+
+
+def normalize_fiberextract(Felist)
 
 
 def plot_fiberextract(fibextract, psize, fsize, outfile):
@@ -267,7 +272,8 @@ def main():
                     #if args.plot:
                     #    plot_fiberextract(FeFile, args.psize, args.fsize, 
                     #                      outfile)
-        throughput_fiberextract(Felist, args) 
+        B = throughput_fiberextract(Felist, args) 
+        
     else:
         FeFile = op.join(op.dirname(args.tracefile),
                          'Fe' + op.basename(args.tracefile))
