@@ -20,6 +20,7 @@ from astropy.io import fits
 from os import environ
 from utils import biweight_location
 from bspline import Bspline
+from pyhetdex.cure.fibermodel import FiberModel
 
 virus_config = "/work/03946/hetdex/maverick/virus_config"
 
@@ -70,15 +71,10 @@ def throughput_fiberextract(Felist, args):
     basis = np.array([b(xi) for xi in xp])
     B = np.zeros((nifu,nw))
     for i in xrange(nifu):
-        if args.debug:
-            t1 = time.time()
         spec = biweight_location(Felist[i][0].data,axis=(0,))
         mask = np.where((~np.isnan(spec))*(~np.isinf(spec))*(spec!=0))[0]
         sol = np.linalg.lstsq(basis[mask,:], spec[mask])[0]
         B[i,:] = np.dot(basis,sol)
-        if args.debug:
-            t2 = time.time()
-            print("Time taken for Fitting %i: %0.2f s" %(i,t2-t1))
 #        if args.plot:  
 #            pltfile = op.join(args.outfolder, 'spectrum_%i.pdf' %i)
 #            fig = plt.figure(figsize=(8, 6))
@@ -109,21 +105,38 @@ def throughput_fiberextract(Felist, args):
     return B, avgB
 
 
-def normalize_fiberextract(Felist, Fe_e_list, Fenames, B, avgB, args):
+def normalize_fiberextract(Felist, Fe_e_list, Fenames, B, avgB, A, args):
     nifu = len(Felist)
     for i in xrange(nifu):
         outfile = op.join(op.dirname(Fenames[i]),'n'+op.basename(Fenames[i]))
         outfile_e = op.join(op.dirname(Fenames[i]),'e.n'+op.basename(Fenames[i]))
+        outfile_t = op.join(op.dirname(Fenames[i]),'t'+op.basename(Fenames[i]))
         with np.errstate(divide='ignore'):
             norm = np.where(B[i,:]!=0., Felist[i][0].data / B[i,:] * avgB, 0.)
             norm_e = np.where(B[i,:]!=0., Fe_e_list[i][0].data / B[i,:] * avgB, 0.)
+            through = np.where(B[i,:]!=0., A[i] * B[i,:] / avgB, 0.)
         Felist[i][0].data = norm
         Fe_e_list[i][0].data = norm_e
         Felist[i][0].header['HISTORY'] = 'Divided by Smoothed Average IFU Spectrum'
         Fe_e_list[i][0].header['HISTORY'] = 'Divided by Smoothed Average IFU Spectrum'
         Felist[i].writeto(outfile, clobber=True)
         Fe_e_list[i].writeto(outfile_e, clobber=True)
+        Felist[i][0].data = through
+        Felist[i].writeto(outfile_t, clobber=True)
 
+def get_fiber_amps(Fiblist, Felist, header_tup, args):
+    nifu = len(Fiblist)
+    wave = np.arange(header_tup[0]) * header_tup[2] + header_tup[1]
+    A = []
+    for i in xrange(nifu):
+        F = FiberModel(Fiblist[i])
+        nfib, nw = Felist[i][0].data.shape
+        a = np.zeros((nfib, nw))
+        for j, w in enumerate(wave):
+            for k in xrange(1, nfib+1):
+                a[k-1, j] = F.get_wf_amplitude(w, k)
+        A.append(a)
+    return A
 
 def plot_fiberextract(fibextract, psize, fsize, outfile):
 
@@ -270,7 +283,10 @@ def main():
     if args.loop:
         Felist = []
         Fe_e_list = []
+        Fiblist = []
         Fenames = []
+        if args.debug:
+            t1 = time.time()
         for uca in ucam:
             for sp in SIDE:
                 mastertrace, distfile, fibfile = make_cal_filenames(
@@ -281,6 +297,7 @@ def main():
                         and op.exists(fibfile)):
                     FeFile = op.join(args.outfolder,'Fe%s' %(op.basename(mastertrace)))
                     FeFile_e = op.join(args.outfolder,'e.Fe%s' %(op.basename(mastertrace)))
+                    Fiblist.append(fibfile)
                     Fenames.append(FeFile)
                     if not op.exists(FeFile) or args.overwrite:
                         fiberextract(mastertrace, distfile, fibfile, 
@@ -291,13 +308,36 @@ def main():
                     #if args.plot:
                     #    plot_fiberextract(FeFile, args.psize, args.fsize, 
                     #                      outfile)
+        if args.debug:
+            t2 = time.time()
+            print("Time Taken Extracting Fibers or Gathering Data: %0.2f" %(t2-t1))
         outfile = op.join(args.outfolder, 'Avg_IFU_spectrum.fits')
+        if args.debug:
+            t1 = time.time()
         B, avgB = throughput_fiberextract(Felist, args)
+        if args.debug:
+            t2 = time.time()
+            print("Time Taken fitting splines to Fe files: %0.2f" %(t2-t1))
+        header_tup = (Felist[0][0].header['NAXIS1'], 
+                      Felist[0][0].header['CRVAL1'], 
+                      Felist[0][0].header['CDELT1'])
+        if args.debug:
+            t1 = time.time()      
+        A = get_fiber_amps(Fiblist, Felist, header_tup, args)
+        if args.debug:
+            t2 = time.time()
+            print("Time Taken getting fiber amps: %0.2f" %(t2-t1)) 
         hdu = fits.PrimaryHDU(np.array(avgB))
         hdu.header['CRVAL1'] = Felist[0][0].header['CRVAL1']
         hdu.header['CDELT1'] = Felist[0][0].header['CDELT1']
         hdu.writeto(outfile, clobber=True)
-        normalize_fiberextract(Felist, Fe_e_list, Fenames, B, avgB, args)
+        if args.debug:
+            t1 = time.time()  
+        normalize_fiberextract(Felist, Fe_e_list, Fenames, B, avgB, A, args)
+        if args.debug:
+            t2 = time.time()
+            print("Time Taken normalizing Fe files: %0.2f" %(t2-t1)) 
+            
     else:
         FeFile = op.join(op.dirname(args.tracefile),
                          'Fe' + op.basename(args.tracefile))
