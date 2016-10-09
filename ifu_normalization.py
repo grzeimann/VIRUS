@@ -18,6 +18,7 @@ import argparse as ap
 import os.path as op
 from os import environ
 from .utils import biweight_location
+from bspline import Bspline
 
 virus_config = "/work/03946/hetdex/maverick/virus_config"
 
@@ -58,11 +59,29 @@ def fiberextract(filename, distmodel, fibermodel, outname, opts):
     return command
     
 def throughput_fiberextract(Felist, args):
-    if args.plot:
-        fig = plt.figure(figsize=(12, 9))
     FeFiles = np.array(Felist)
-    
-    
+    ifu_avg_spec = biweight_location(FeFiles, axis=(1,))
+    nifu, nw = ifu_avg_spec.shape
+    xp = np.linspace(0, 1, num=nw)
+    nbspline = 51
+    a = np.linspace(0, 1, nbspline)
+    knots = np.hstack([0,0,np.vstack([a,a]).T.ravel(),1,1])
+    b = Bspline(knots, 3)
+    basis = np.array([b(xi) for xi in xp])
+    B = np.zeros((nifu,nw))
+    for i in xrange(nifu):
+        sol = np.linalg.lstsq(basis, ifu_avg_spec[i,:])[0]
+        B[i,:] = np.dot(basis,sol)
+        if args.plot:
+            pltfile = op.join(args.outfolder, 'spectrum_%i.pdf' %i)
+            fig = plt.figure(figsize=(8, 6))
+            plt.plot(xp, ifu_avg_spec[i,:])
+            plt.plot(xp, B[i,:],'r--')
+            plt.xticks([])
+            plt.xlabel('Wavelength')
+            plt.ylabel('Arbitrary Units')
+            plt.xlim([0, 1])
+            fig.savefig(pltfile, dpi=150)
 
 
 def plot_fiberextract(fibextract, psize, fsize, outfile):
