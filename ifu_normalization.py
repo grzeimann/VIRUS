@@ -226,7 +226,7 @@ def main():
         Felist = []
         for uca in ucam:
             for sp in SIDE:
-                mastertrace, fibfile, distfile = make_cal_filenames(
+                mastertrace, distfile, fibfile = make_cal_filenames(
                                                           args.folder, uca, sp)
                 outfile = op.join(args.outfolder, 'FePlot_cam%s_%s.pdf' 
                                                                     %(uca, sp))
