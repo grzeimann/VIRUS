@@ -59,11 +59,8 @@ def fiberextract(filename, distmodel, fibermodel, outname, opts):
     return command
     
 def throughput_fiberextract(Felist, args):
-    FeFiles = np.rollaxis(np.dstack((Felist)),-1)
-    print(FeFiles)
-    print(FeFiles.shape)
-    ifu_avg_spec = biweight_location(FeFiles, axis=(1,))
-    nifu, nw = ifu_avg_spec.shape
+    nifu = len(Felist)
+    nw = len(Felist[0,:])
     xp = np.linspace(0, 1, num=nw)
     nbspline = 51
     a = np.linspace(0, 1, nbspline)
@@ -72,12 +69,13 @@ def throughput_fiberextract(Felist, args):
     basis = np.array([b(xi) for xi in xp])
     B = np.zeros((nifu,nw))
     for i in xrange(nifu):
-        sol = np.linalg.lstsq(basis, ifu_avg_spec[i,:])[0]
+        spec = biweight_location(Felist[i],axis=(0,))
+        sol = np.linalg.lstsq(basis, spec)[0]
         B[i,:] = np.dot(basis,sol)
         if args.plot:
             pltfile = op.join(args.outfolder, 'spectrum_%i.pdf' %i)
             fig = plt.figure(figsize=(8, 6))
-            plt.plot(xp, ifu_avg_spec[i,:])
+            plt.plot(xp, spec)
             plt.plot(xp, B[i,:],'r--')
             plt.xticks([])
             plt.xlabel('Wavelength')
