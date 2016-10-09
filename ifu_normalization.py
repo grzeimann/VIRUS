@@ -129,6 +129,9 @@ def get_fiber_amps(Fiblist, Felist, header_tup, args):
     wave = np.arange(header_tup[0]) * header_tup[2] + header_tup[1]
     A = []
     for i in xrange(nifu):
+        if args.debug:
+            t1 = time.time()
+            print("Working on IFU %i" %i)
         F = FiberModel(Fiblist[i])
         nfib, nw = Felist[i][0].data.shape
         a = np.zeros((nfib, nw))
@@ -136,6 +139,9 @@ def get_fiber_amps(Fiblist, Felist, header_tup, args):
             for k in xrange(1, nfib+1):
                 a[k-1, j] = F.get_wf_amplitude(w, k)
         A.append(a)
+        if args.debug:
+            t2=time.time()
+            print("Time Taken to get amplitudes for IFU %i: %0.2f" %(i,t2-t1))
     return A
 
 def plot_fiberextract(fibextract, psize, fsize, outfile):
