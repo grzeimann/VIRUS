@@ -75,6 +75,7 @@ def throughput_fiberextract(Felist, args):
         spec = biweight_location(Felist[i],axis=(0,))
         mask = np.where(~(np.isnan(spec) + np.isinf(spec) + spec==0))[0]
         sol = np.linalg.lstsq(basis[mask,:], spec[mask])[0]
+        print(sol)
         B[i,:] = np.dot(basis,sol)
         if args.debug:
             t2 = time.time()
