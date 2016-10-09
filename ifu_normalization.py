@@ -61,7 +61,7 @@ def fiberextract(filename, distmodel, fibermodel, outname, opts):
     
 def throughput_fiberextract(Felist, args):
     nifu = len(Felist)
-    nw = len(Felist[0][0,:])
+    nw = len(Felist[0][0].data[0,:])
     xp = np.linspace(0, 1, num=nw)
     nbspline = 12
     a = np.linspace(0, 1, nbspline)
@@ -72,7 +72,7 @@ def throughput_fiberextract(Felist, args):
     for i in xrange(nifu):
         if args.debug:
             t1 = time.time()
-        spec = biweight_location(Felist[i],axis=(0,))
+        spec = biweight_location(Felist[i][0].data,axis=(0,))
         mask = np.where((~np.isnan(spec))*(~np.isinf(spec))*(spec!=0))[0]
         sol = np.linalg.lstsq(basis[mask,:], spec[mask])[0]
         B[i,:] = np.dot(basis,sol)
@@ -105,10 +105,26 @@ def throughput_fiberextract(Felist, args):
         plt.ylim([0.5,1.5])
         fig.savefig(pltfile, dpi=150)
         plt.close()
-    return B
+    return B, avgB
 
 
-def normalize_fiberextract(Felist)
+def normalize_fiberextract(Felist, Fe_e_list, Fenames, B, args):
+    nifu = len(Felist)
+    for i in xrange(nifu):
+        outfile = op.join(op.dirname(Fenames[i]),'n'+op.basename(Fenames[i]))
+        outfile_e = op.join(op.dirname(Fenames[i]),'e.n'+op.basename(Fenames[i]))
+        norm = Felist[i][0].data / B[i,:]
+        norm_e = Fe_e_list[i][0].data / B[i,:]
+        Felist[i][0].data = norm
+        Fe_e_list[i][0].data = norm_e
+        Felist[i][0].header['HISTORY'] = 'Divided by Smoothed Average IFU Spectrum'
+        Fe_e_list[i][0].header['HISTORY'] = 'Divided by Smoothed Average IFU Spectrum'
+        Felist[i].writeto(outfile, clobber=True)
+        Fe_e_list[i].writeto(outfile_e, clobber=True)
+
+        
+        
+    
 
 
 def plot_fiberextract(fibextract, psize, fsize, outfile):
@@ -255,6 +271,8 @@ def main():
     args = parse_arg(sys.argv[1:])
     if args.loop:
         Felist = []
+        Fe_e_list = []
+        Fenames = []
         for uca in ucam:
             for sp in SIDE:
                 mastertrace, distfile, fibfile = make_cal_filenames(
@@ -264,16 +282,24 @@ def main():
                 if (op.exists(mastertrace) and op.exists(distfile) 
                         and op.exists(fibfile)):
                     FeFile = op.join(args.outfolder,'Fe%s' %(op.basename(mastertrace)))
+                    FeFile_e = op.join(args.outfolder,'e.Fe%s' %(op.basename(mastertrace)))
+                    Fenames.append(FeFile)
                     if not op.exists(FeFile) or args.overwrite:
                         fiberextract(mastertrace, distfile, fibfile, 
                                   op.join(args.outfolder, "%s" %(op.basename(mastertrace))), 
                                   args.opts)
-                    Felist.append(fits.open(FeFile)[0].data)
+                    Felist.append(fits.open(FeFile))
+                    Fe_e_list.append(fits.open(FeFile_e))
                     #if args.plot:
                     #    plot_fiberextract(FeFile, args.psize, args.fsize, 
                     #                      outfile)
-        B = throughput_fiberextract(Felist, args) 
-        
+        outfile = op.join(args.outfolder, 'Avg_IFU_spectrum.fits')
+        B, avgB = throughput_fiberextract(Felist, args)
+        hdu = fits.PrimaryHDU(avgB)
+        hdu[0].header['CRVAL1'] = Felist[0][0].header['CRVAL1']
+        hdu[0].header['CDELT1'] = Felist[0][0].header['CDELT1']
+        hdu.writeto(outfile, clobber=True)
+        normalize_fiberextract(Felist, Fe_e_list, Fenames, B, args)
     else:
         FeFile = op.join(op.dirname(args.tracefile),
                          'Fe' + op.basename(args.tracefile))
