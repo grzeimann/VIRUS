@@ -6,6 +6,7 @@ Created on Wed Oct  5 18:12:13 2016
 """
 
 import numpy as np
+from numpy import ma
 
 def median_absolute_deviation(a, axis=None):
     """Compute the median absolute deviation.
@@ -133,6 +134,7 @@ def biweight_location(a, c=6.0, M=None, axis=None):
     """
 
     a = np.array(a, copy=False)
+    a = ma.masked_array(a, mask=(np.isinf(a)*np.isnan(a)))
 
     if M is None:
         if axis is None:
@@ -159,7 +161,7 @@ def biweight_location(a, c=6.0, M=None, axis=None):
     u = d / c / MAD
     
     # now remove the outlier points
-    mask = (np.abs(u) < 1).astype(np.int)
+    mask = ((np.abs(u) < 1) * (np.isfinite(u))).astype(np.int)
     u = (1 - u ** 2) ** 2
     return M + (d * u * mask).sum(axis=axis) / (u * mask).sum(axis=axis)
     
