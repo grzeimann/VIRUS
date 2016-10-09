@@ -82,6 +82,7 @@ def throughput_fiberextract(Felist, args):
             plt.ylabel('Arbitrary Units')
             plt.xlim([0, 1])
             fig.savefig(pltfile, dpi=150)
+            plt.close()
 
 
 def plot_fiberextract(fibextract, psize, fsize, outfile):
