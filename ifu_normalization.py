@@ -59,7 +59,7 @@ def fiberextract(filename, distmodel, fibermodel, outname, opts):
     return command
     
 def throughput_fiberextract(Felist, args):
-    FeFiles = np.vstack(Felist)
+    FeFiles = np.hstack(Felist)
     print(FeFiles)
     print(FeFiles.shape)
     ifu_avg_spec = biweight_location(FeFiles, axis=(1,))
