@@ -75,25 +75,35 @@ def throughput_fiberextract(Felist, args):
         spec = biweight_location(Felist[i],axis=(0,))
         mask = np.where((~np.isnan(spec))*(~np.isinf(spec))*(spec!=0))[0]
         sol = np.linalg.lstsq(basis[mask,:], spec[mask])[0]
-        print(sol)
         B[i,:] = np.dot(basis,sol)
         if args.debug:
             t2 = time.time()
             print("Time taken for Fitting %i: %0.2f s" %(i,t2-t1))
-        if args.plot:  
-            pltfile = op.join(args.outfolder, 'spectrum_%i.pdf' %i)
-            fig = plt.figure(figsize=(8, 6))
-            plt.plot(xp, spec)
-            plt.plot(xp, B[i,:],'r--')
-            plt.xticks([])
-            plt.xlabel('Wavelength')
-            plt.ylabel('Arbitrary Units')
-            plt.xlim([0, 1])
-            fig.savefig(pltfile, dpi=150)
-            plt.close()
-            if args.debug:
-                t3 = time.time()
-                print("Time taken for Plotting %i: %0.2f s" %(i,t3-t2))
+#        if args.plot:  
+#            pltfile = op.join(args.outfolder, 'spectrum_%i.pdf' %i)
+#            fig = plt.figure(figsize=(8, 6))
+#            plt.plot(xp, spec)
+#            plt.plot(xp, B[i,:],'r--')
+#            plt.xticks([])
+#            plt.xlabel('Wavelength')
+#            plt.ylabel('Arbitrary Units')
+#            plt.xlim([0, 1])
+#            fig.savefig(pltfile, dpi=150)
+#            plt.close()
+    norm = plt.Normalize()
+    colors = plt.cm.viridis(norm(np.arange(nifu)+1))
+    pltfile = op.join(args.outfolder, 'IFU_average_spectra.pdf')
+    fig = plt.figure(figsize=(8, 6))
+    avgB = biweight_location(B,axis=(0,))
+    for i in xrange(nifu):
+        plt.plot(xp, B[i,:]/avgB, color=colors[i,0:3], alpha=0.9)
+    plt.xticks([])
+    plt.xlabel('Wavelength')
+    plt.ylabel('Normalized Units')
+    plt.xlim([0, 1])
+    plt.ylim([0.5,1.5])
+    fig.savefig(pltfile, dpi=150)
+    plt.close()
 
 
 def plot_fiberextract(fibextract, psize, fsize, outfile):
