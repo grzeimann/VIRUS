@@ -295,7 +295,7 @@ def main():
                     #                      outfile)
         outfile = op.join(args.outfolder, 'Avg_IFU_spectrum.fits')
         B, avgB = throughput_fiberextract(Felist, args)
-        hdu = fits.PrimaryHDU(avgB)
+        hdu = fits.PrimaryHDU(np.array(avgB))
         hdu.header['CRVAL1'] = Felist[0][0].header['CRVAL1']
         hdu.header['CDELT1'] = Felist[0][0].header['CDELT1']
         hdu.writeto(outfile, clobber=True)
