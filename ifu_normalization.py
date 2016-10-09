@@ -239,9 +239,9 @@ def main():
                                   op.join(args.outfolder, "%s" %(op.basename(mastertrace))), 
                                   args.opts)
                     Felist.append(fits.open(FeFile)[0].data)
-                    if args.plot:
-                        plot_fiberextract(FeFile, args.psize, args.fsize, 
-                                          outfile)
+                    #if args.plot:
+                    #    plot_fiberextract(FeFile, args.psize, args.fsize, 
+                    #                      outfile)
         throughput_fiberextract(Felist, args) 
     else:
         FeFile = op.join(op.dirname(args.tracefile),
