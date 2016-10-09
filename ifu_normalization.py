@@ -232,10 +232,10 @@ def main():
                                                                     %(uca, sp))
                 if (op.exists(mastertrace) and op.exists(distfile) 
                         and op.exists(fibfile)):
-                    FeFile = op.join(args.outfolder,'Fe%s' %(mastertrace))
+                    FeFile = op.join(args.outfolder,'Fe%s' %(op.basename(mastertrace)))
                     if not op.exists(FeFile) or args.overwrite:
                         fiberextract(mastertrace, distfile, fibfile, 
-                                  op.join(args.outfolder, "%s" %(mastertrace)), 
+                                  op.join(args.outfolder, "%s" %(op.basename(mastertrace))), 
                                   args.opts)
                     Felist.append(fits.open(FeFile)[0].data)
                     if args.plot:
