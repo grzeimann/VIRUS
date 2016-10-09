@@ -109,24 +109,20 @@ def throughput_fiberextract(Felist, args):
     return B, avgB
 
 
-def normalize_fiberextract(Felist, Fe_e_list, Fenames, B, args):
+def normalize_fiberextract(Felist, Fe_e_list, Fenames, B, avgB, args):
     nifu = len(Felist)
     for i in xrange(nifu):
         outfile = op.join(op.dirname(Fenames[i]),'n'+op.basename(Fenames[i]))
         outfile_e = op.join(op.dirname(Fenames[i]),'e.n'+op.basename(Fenames[i]))
         with np.errstate(divide='ignore'):
-            norm = np.where(B[i,:]!=0., Felist[i][0].data / B[i,:], 0.)
-            norm_e = np.where(B[i,:]!=0., Fe_e_list[i][0].data / B[i,:], 0.)
+            norm = np.where(B[i,:]!=0., Felist[i][0].data / B[i,:] * avgB, 0.)
+            norm_e = np.where(B[i,:]!=0., Fe_e_list[i][0].data / B[i,:] * avgB, 0.)
         Felist[i][0].data = norm
         Fe_e_list[i][0].data = norm_e
         Felist[i][0].header['HISTORY'] = 'Divided by Smoothed Average IFU Spectrum'
         Fe_e_list[i][0].header['HISTORY'] = 'Divided by Smoothed Average IFU Spectrum'
         Felist[i].writeto(outfile, clobber=True)
         Fe_e_list[i].writeto(outfile_e, clobber=True)
-
-        
-        
-    
 
 
 def plot_fiberextract(fibextract, psize, fsize, outfile):
@@ -301,7 +297,7 @@ def main():
         hdu.header['CRVAL1'] = Felist[0][0].header['CRVAL1']
         hdu.header['CDELT1'] = Felist[0][0].header['CDELT1']
         hdu.writeto(outfile, clobber=True)
-        normalize_fiberextract(Felist, Fe_e_list, Fenames, B, args)
+        normalize_fiberextract(Felist, Fe_e_list, Fenames, B, avgB, args)
     else:
         FeFile = op.join(op.dirname(args.tracefile),
                          'Fe' + op.basename(args.tracefile))
