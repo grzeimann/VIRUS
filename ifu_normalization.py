@@ -68,11 +68,14 @@ def throughput_fiberextract(Felist, args):
     b = Bspline(knots, 3)
     basis = np.array([b(xi) for xi in xp])
     B = np.zeros((nifu,nw))
+    print(nifu)
     for i in xrange(nifu):
+        Felist[i][np.isnan(Felist[i])] = 0.0
         spec = biweight_location(Felist[i],axis=(0,))
         sol = np.linalg.lstsq(basis, spec)[0]
         B[i,:] = np.dot(basis,sol)
         if args.plot:
+            print(i)
             pltfile = op.join(args.outfolder, 'spectrum_%i.pdf' %i)
             fig = plt.figure(figsize=(8, 6))
             plt.plot(xp, spec)
