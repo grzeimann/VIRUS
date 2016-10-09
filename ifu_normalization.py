@@ -161,9 +161,9 @@ def parse_arg(args):
                    help="""Distortion model file""")
     p.add_argument('-f', '--fib', dest='fib', default=None,
                    help="""Fiber model file""")
-    p.add_argument('-F', '--folder', dest='fib', default=None,
+    p.add_argument('-F', '--folder', dest='folder', default=None,
                    help="""Folder for twighlights and cals""")
-    p.add_argument('-O', '--outfolder', dest='fib', default=None,
+    p.add_argument('-O', '--outfolder', dest='outfolder', default=None,
                    help="""Folder for twighlights and cals""")
     p.add_argument('-s', '--size', dest='psize', default=150,
                    help="""Size of the postage stamps to plot""")
