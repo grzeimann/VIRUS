@@ -105,6 +105,31 @@ def throughput_fiberextract(Felist, args):
     return B, avgB
 
 
+def edit_fibermodel(Felist, Fiblist, header_tup, B, avgB, A, args):
+    nifu = len(Fiblist)
+    wave = np.arange(header_tup[0]) * header_tup[2] + header_tup[1]
+    for i in xrange(nifu):
+        if args.debug:
+            t1 = time.time()
+            print("Working on Fibermodel %i" %i)
+        F = FiberModel(Fiblist[i])
+        nfib, nw = Felist[i][0].data.shape
+        through = A[i] * B[i,:] / avgB
+        for j in xrange(nfib):
+            mask = np.where(np.isfinite(through[j,:]))[0]
+            basis = np.vstack([F.amplitudes[j].get_basis(F._scal_w(w)) 
+                              for w in wave])
+            sol = np.linalg.lstsq(basis[mask,:], through[j,mask])[0]
+            F.amplitudes[j].A = sol[:-1]
+            F.amplitudes[j].mean = sol[-1]
+        filename = Fiblist[i][:-6]+'adjpy_'+Fiblist[i][-6]+'.fmod'
+        if args.debug:
+            print("Writing out %s" % filename)
+        F.writeto(op.join(args.outfolder, filename))
+        if args.debug:
+            t2=time.time()
+            print("Time Taken to reset amplitudes for IFU %i: %0.2f" %(i,t2-t1))
+
 def normalize_fiberextract(Felist, Fe_e_list, Fenames, B, avgB, A, args):
     nifu = len(Felist)
     for i in xrange(nifu):
@@ -343,7 +368,12 @@ def main():
         if args.debug:
             t2 = time.time()
             print("Time Taken normalizing Fe files: %0.2f" %(t2-t1)) 
-            
+        if args.debug:
+            t1 = time.time()             
+        edit_fibermodel(Felist, Fiblist, header_tup, B, avgB, A, args)
+        if args.debug:
+            t2 = time.time()
+            print("Time Taken rewriting Fib models: %0.2f" %(t2-t1))             
     else:
         FeFile = op.join(op.dirname(args.tracefile),
                          'Fe' + op.basename(args.tracefile))
