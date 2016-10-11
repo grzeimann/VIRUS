@@ -36,9 +36,9 @@ IFUSLOT_DICT = {'093':['004','023'],
                 '096':['038','014'],
                 '103':['020','004'],
                 '104':['032','028'],
-                '105':['012','055'],
+                #'105':['012','055'],
                 '106':['017','022'],
-                '999':['031','999']} 
+                '300016':['012','999']} 
 
 class Fibers:
     def __init__(self, N, D, order = 3):
@@ -93,6 +93,10 @@ def parse_args(argv=None):
                         
     parser.add_argument("--specid", type=str, help="Camera or SPECID", 
                         default=None)
+
+    parser.add_argument("--bin_bias", action="count", default=0, 
+                        help="Bin the Bias Frames?")
+
 
     parser.add_argument("--dist_from_trace", type=float, 
                         help='''Pixel distance from trace''',
@@ -307,7 +311,8 @@ def main():
     if args.specid is not None:
         for key in IFUSLOT_DICT:
             if IFUSLOT_DICT[key][0] == args.specid:
-                ifuslot = key                
+                ifuslot = key 
+        print(ifuslot)
         flt_names = glob.glob(op.join(args.flt, 'exp*', subfolder, '*' + ifuslot + SPEC[0] + '*.fits'))
         zro_names = glob.glob(op.join(args.zro, 'exp*', subfolder, '*' + ifuslot + SPEC[0] + '*.fits'))
     else:
@@ -353,24 +358,32 @@ def main():
         ylow                 = int(ylow)
         yhigh                = int(yhigh)
         blank, txlow, txhigh, tylow, tyhigh, blank = re.split('[: \[ \] ,]',p[0].header['TRIMSEC'])
-        txlow                = int(txlow)
+        txlow                = int(txlow)-1
         txhigh               = int(txhigh)
-        tylow                = int(tylow)
+        tylow                = int(tylow)-1
         tyhigh               = int(tyhigh)
         
         bias1                = np.array(p[0].data.copy(),dtype=np.float)
         overscan             = np.mean(bias1[ylow:yhigh,xlow:xhigh])
         bias1                -= overscan
         bias1                = bias1[tylow:tyhigh,txlow:txhigh] 
+        if args.bin_bias:
+            bias1 = (bias1[0::2,0::2] + bias1[0::2,1::2] + bias1[1::2,0::2] 
+                        + bias1[1::2,1::2])
 
-       
-        beginning, ending    = zro_names[1].split(SPEC[0]) # using second zero frame
-        filenameb2           = beginning + sp + ending
-        p = pyfits.open(filenameb2)
-        bias2                = np.array(p[0].data.copy(),dtype=np.float)
-        overscan             = np.mean ( bias2[ylow:yhigh,xlow:xhigh] )
-        bias2                -= overscan
-        bias2                = bias2[tylow:tyhigh,txlow:txhigh]
+        beginning, ending    = flt_names[0].split(SPEC[0]) # using first zero frame
+        filenameb1           = beginning + sp + ending
+        p = pyfits.open(filenameb1)
+        blank, fxlow, fxhigh, fylow, fyhigh, blank = re.split('[: \[ \] ,]',p[0].header['BIASSEC'])
+        fxlow                 = int(fxlow)
+        fxhigh                = int(fxhigh)
+        fylow                 = int(fylow)
+        fyhigh                = int(fyhigh)
+        blank, ftxlow, ftxhigh, ftylow, ftyhigh, blank = re.split('[: \[ \] ,]',p[0].header['TRIMSEC'])
+        ftxlow                = int(ftxlow)-1
+        ftxhigh               = int(ftxhigh)
+        ftylow                = int(ftylow)-1
+        ftyhigh               = int(ftyhigh)
         
         mf1 = np.zeros((npairs,))
         mf2 = np.zeros((npairs,))
@@ -382,9 +395,9 @@ def main():
             gainhead[sp]         = p[0].header['GAIN']
             rdnoisehead[sp]      = p[0].header['RDNOISE']
             flat1                = np.array(p[0].data.copy(),dtype=np.float)
-            overscan             = np.mean(flat1[ylow:yhigh,xlow:xhigh])
+            overscan             = np.mean(flat1[fylow:fyhigh,fxlow:fxhigh])
             flat1                -= overscan
-            flat1                = flat1[tylow:tyhigh,txlow:txhigh]
+            flat1                = flat1[ftylow:ftyhigh,ftxlow:ftxhigh]
             T = Trace(flat1, debug=args.debug)
             allfibers = T.calculate_trace(interactive=False)            
             y = np.array([F.trace for F in allfibers])
@@ -411,7 +424,10 @@ def main():
             overscan            = np.mean (bias[ylow:yhigh,xlow:xhigh])
             bias               -= overscan
             bias                = bias[tylow:tyhigh,txlow:txhigh]
-            bigbias[:,:,i]      = bias
+            if args.bin_bias:
+                bias = (bias[0::2,0::2] + bias[0::2,1::2] + bias[1::2,0::2] 
+                        + bias[1::2,1::2])
+            bigbias[:,:,i] = bias
         rdnoiseimage     = np.std(bigbias, axis=2 )
         avgbiasimage     = np.mean(bigbias, axis=2 )
         rdnoiseclipped   = stats.sigmaclip(rdnoiseimage)[0]
@@ -422,32 +438,36 @@ def main():
            beginning, ending    = flt_names[2*i].split(SPEC[0]) # looping through the first of the frames
            filenamef1           = beginning + sp + ending
            p                    = pyfits.open(filenamef1)
+           exptime1 = p[0].header['EXPTIME']
+           readtime1 = p[0].header['READTIME']
            flat1                = np.array(p[0].data.copy(),dtype=np.float)
-           overscan             = np.mean(flat1[ylow:yhigh,xlow:xhigh])
+           overscan             = np.mean(flat1[fylow:fyhigh,fxlow:fxhigh])
            flat1                -= overscan
-           flat1                = flat1[tylow:tyhigh,txlow:txhigh]
+           flat1                = flat1[ftylow:ftyhigh,ftxlow:ftxhigh]
            
            beginning, ending    = flt_names[2*i+1].split(SPEC[0]) # looking at consecutive pairs
            filenamef2           = beginning + sp + ending
            p = pyfits.open(filenamef2)
+           exptime2 = p[0].header['EXPTIME']
+           readtime2 = p[0].header['READTIME']
            flat2                = np.array(p[0].data.copy(),dtype=np.float)
-           overscan             = np.mean(flat2[ylow:yhigh,xlow:xhigh])
+           overscan             = np.mean(flat2[fylow:fyhigh,fxlow:fxhigh])
            flat2                -= overscan
-           flat2                = flat2[tylow:tyhigh,txlow:txhigh]
+           flat2                = flat2[ftylow:ftyhigh,ftxlow:ftxhigh]
 
            x, y = np.where((flat1 > flow) * (flat1 < fhigh) * (mask))
            if len(x)>10:
                mf1[i]  = np.mean(flat1[x,y])
                mf2[i]  = np.mean(flat2[x,y])
                mb  = np.mean(avgbiasimage[x,y])
-               df   = flat1[x,y] - flat2[x,y]
+               df   = flat1[x,y] - flat2[x,y]*mf1[i]/mf2[i]
                cdf  = stats.sigmaclip(df)[0]
                sdf  = np.std(cdf)
                mn   = (mf1[i] + mf2[i] - 2*mb) / 2.
                vr   = (sdf**2 - 2.*readnoiseavg[sp]**2) / 2.
                gain[spcount,i] = mn / vr
                read[spcount,i] = gain[spcount,i] * readnoiseavg[sp]
-               print("%s | Gain: %01.3f | RDNOISE: %01.3f | F1: %5d | F2: %5d | Var: %05.1f" %(sp, gain[spcount,i],read[spcount,i], mf1[i], mf2[i], vr))
+               print("%s | Gain: %01.3f | RDNOISE: %01.3f | F1: %5d | F2: %5d | Var: %05.1f | E1: %3.2f | E2: %3.2f | R1: %3.2f | R2: %3.2f " %(sp, gain[spcount,i],read[spcount,i], mf1[i], mf2[i], vr, exptime1, exptime2, readtime1, readtime2))
         gainunit[sp] = np.median(gain[spcount,( mf1 > lthresh ) * (mf2 > lthresh ) * ( mf1 < hthresh ) * (mf2 < hthresh ) * (mf1/vr<1.0)]) # Only include pixel flats above lthresh
         readunit[sp] = np.median(read[spcount,( mf1 > lthresh ) * (mf2 > lthresh ) * ( mf1 < hthresh ) * (mf2 < hthresh ) * (mf1/vr<1.0)])
         readnoiseavg[sp] *= gainunit[sp]

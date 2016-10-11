@@ -21,6 +21,7 @@ from os import environ
 from utils import biweight_location
 from bspline import Bspline
 from pyhetdex.cure.fibermodel import FiberModel
+from scipy.optimize import lsq_linear
 
 virus_config = "/work/03946/hetdex/maverick/virus_config"
 
@@ -109,19 +110,27 @@ def edit_fibermodel(Felist, Fiblist, header_tup, B, avgB, A, args):
     nifu = len(Fiblist)
     wave = np.arange(header_tup[0]) * header_tup[2] + header_tup[1]
     for i in xrange(nifu):
-        if args.debug:
-            t1 = time.time()
-            print("Working on Fibermodel %i" %i)
         F = FiberModel(Fiblist[i])
         nfib, nw = Felist[i][0].data.shape
         through = A[i] * B[i,:] / avgB
         for j in xrange(nfib):
+            if args.debug:
+                t1 = time.time()
+                print("Working on Fibermodel, fiber: %i, %i" %(i,j))            
             mask = np.where(np.isfinite(through[j,:]))[0]
             basis = np.vstack([F.amplitudes[j].get_basis(F._scal_w(w)) 
                               for w in wave])
-            sol = np.linalg.lstsq(basis[mask,:], through[j,mask])[0]
-            F.amplitudes[j].A = sol[:-1]
-            F.amplitudes[j].mean = sol[-1]
+            x = through[j,mask]
+            x[-1] = x[-2]                
+            y = basis[mask,:]
+            ax,ay = y.shape
+            lb = -1.*np.ones((ay,))
+            lb[-1]=-10.
+            ub = 1.*np.ones((ay,))
+            ub[-1]=10.
+            sol = lsq_linear(np.array(basis[mask,:]), np.array(x), bounds=(lb,ub))
+            F.amplitudes[j].A = sol['x'][:-1]
+            F.amplitudes[j].mean = sol['x'][-1]
         filename = Fiblist[i][:-6]+'adjpy_'+Fiblist[i][-6]+'.fmod'
         if args.debug:
             print("Writing out %s" % filename)
