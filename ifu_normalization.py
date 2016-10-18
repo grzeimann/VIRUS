@@ -10,6 +10,7 @@ from __future__ import print_function
 import sys
 import os
 import time
+import glob
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,6 +25,7 @@ from pyhetdex.cure.fibermodel import FiberModel
 from scipy.optimize import lsq_linear
 
 virus_config = "/work/03946/hetdex/maverick/virus_config"
+fplane_file = np.loadtxt(op.join(virus_config,'fplane','fplane20160523.txt'))
 
 SIDE = ["L","R"]
 ucam = ["004", "008", "012", "013",  "016", "017", "020", "024", "025", "027",
@@ -256,6 +258,8 @@ def parse_arg(args):
     p.add_argument('-f', '--fib', dest='fib', default=None,
                    help="""Fiber model file""")
     p.add_argument('-F', '--folder', dest='folder', default=None,
+                   help="""Folder for skyframes""")
+    p.add_argument('-F', '--calfolder', dest='folder', default=None,
                    help="""Folder for twighlights and cals""")
     p.add_argument('-O', '--outfolder', dest='outfolder', default=None,
                    help="""Folder for twighlights and cals""")
@@ -268,129 +272,120 @@ def parse_arg(args):
     p.add_argument('-o', '--options', dest='opts', 
                    default="-n 1032 -W 3500,5500 -P",
                    help="""Fiberextract options.""")
-    p.add_argument('-of', '--outfile', dest='outfile', default='FePlot.pdf',
-                   help="""Size of the postage stamps to plot""")
     p.add_argument('-w', '--overwrite', dest='overwrite', default=0,
                    action="count", help="""Overwrite the existing Fe* file?""")
-    p.add_argument('-l', '--loop', dest='loop', 
-                   action="count", default=0,
-                   help="""Loop through all cameras with default locations.""") 
     p.add_argument('-p', '--plot', dest='plot', 
                    action="count", default=0,
                    help="""Plot Fiber extracted twighlights vs. solar spectrum.""") 
     p.add_argument('-D', '--debug', dest='debug', 
                    action="count", default=0,
                    help="""Debug.""") 
-
+    p.add_argument('-T', '--twi', dest='twi', 
+                   action="count", default=0,
+                   help="""Twighlight Frames?  Otherwise Sky frames are used.""") 
                    
     args = p.parse_args(args=args)
                
-    if not args.loop:
-        if not args.tracefile:
-            msg = ('If you are not running through a loop, '
-                  'you need to provide a tracefile')
-            p.error(msg) 
-        if not args.dist:
-            msg = ('If you are not running through a loop, '
-                  'you need to provide a distortion model file')
-            p.error(msg) 
-        if not args.fib:
-            msg = ('If you are not running through a loop, '
-                  'you need to provide a fiber model file')
-            p.error(msg)
-    else:
+    if not args.twi:
         if not args.folder:
-            msg = ('If you are running through a loop, '
-                  'you need to provide a folder for the data/cals')
-            p.error(msg)             
-        if not args.outfolder:
-            msg = ('If you are running through a loop, '
-                  'you need to provide an out folder for the Fe files.')
+            msg = ('If not running on twis, '
+                   'you need to provide a folder for the sky frames')
             p.error(msg) 
+    if not args.calfolder:
+        msg = ('You need to provide a cal folder for the twis, dist, and fib.')
+        p.error(msg)             
+    if not args.outfolder:
+        msg = ('You need to provide an out folder for the (n,t)Fe files.')
+        p.error(msg) 
 
             
     return args
 
-def make_cal_filenames(folder, specid, side):
-    mastertrace = op.join(folder, 'mastertrace_twi_%s_%s.fits' %(specid, side))    
-    distfile = op.join(folder, 'mastertrace_twi_%s_%s.dist' %(specid, side))    
-    fibfile = op.join(folder, 'mastertrace_twi_%s_%s.fmod' %(specid, side)) 
-    return mastertrace, distfile, fibfile
-
+def specid_to_ifuslot(specid):
+    loc = fplane_file[:,4] == int(specid)
+    ifuslot = "%03d" %fplane_file[loc,0]
+    return ifuslot
+    
+def make_sky_filenames(args, specid, side):
+    if args.twi:
+        sky_fn = op.join(args.calfolder, 'mastertrace_twi_%s_%s.fits' %(specid, side))
+    else:
+        sky_fn = op.join(args.folder,'c%s', 'sci', 'Sky*%s_sci_%s.fits' %(specid,
+                                              specid_to_ifuslot(specid), side))
+    skyfiles = glob.glob(sky_fn)    
+    distfile = op.join(args.calfolder, 'mastertrace_twi_%s_%s.dist' %(specid, side))    
+    fibfile = op.join(args.calfolder, 'mastertrace_twi_%s_%s.fmod' %(specid, side)) 
+    return skyfiles, distfile, fibfile
+        
 def main():
     # parse the command line
     args = parse_arg(sys.argv[1:])
-    if args.loop:
-        Felist = []
-        Fe_e_list = []
-        Fiblist = []
-        Fenames = []
-        if args.debug:
-            t1 = time.time()
-        for uca in ucam:
-            for sp in SIDE:
-                mastertrace, distfile, fibfile = make_cal_filenames(
-                                                          args.folder, uca, sp)
-                outfile = op.join(args.outfolder, 'FePlot_cam%s_%s.pdf' 
-                                                                    %(uca, sp))
-                if (op.exists(mastertrace) and op.exists(distfile) 
-                        and op.exists(fibfile)):
-                    FeFile = op.join(args.outfolder,'Fe%s' %(op.basename(mastertrace)))
-                    FeFile_e = op.join(args.outfolder,'e.Fe%s' %(op.basename(mastertrace)))
-                    Fiblist.append(fibfile)
-                    Fenames.append(FeFile)
-                    if not op.exists(FeFile) or args.overwrite:
-                        fiberextract(mastertrace, distfile, fibfile, 
-                                  op.join(args.outfolder, "%s" %(op.basename(mastertrace))), 
-                                  args.opts)
-                    Felist.append(fits.open(FeFile))
-                    Fe_e_list.append(fits.open(FeFile_e))
-                    #if args.plot:
-                    #    plot_fiberextract(FeFile, args.psize, args.fsize, 
-                    #                      outfile)
-        if args.debug:
-            t2 = time.time()
-            print("Time Taken Extracting Fibers or Gathering Data: %0.2f" %(t2-t1))
-        outfile = op.join(args.outfolder, 'Avg_IFU_spectrum.fits')
-        if args.debug:
-            t1 = time.time()
-        B, avgB = throughput_fiberextract(Felist, args)
-        if args.debug:
-            t2 = time.time()
-            print("Time Taken fitting splines to Fe files: %0.2f" %(t2-t1))
-        header_tup = (Felist[0][0].header['NAXIS1'], 
-                      Felist[0][0].header['CRVAL1'], 
-                      Felist[0][0].header['CDELT1'])
-        if args.debug:
-            t1 = time.time()      
-        A = get_fiber_amps(Fiblist, Felist, header_tup, args)
-        if args.debug:
-            t2 = time.time()
-            print("Time Taken getting fiber amps: %0.2f" %(t2-t1)) 
-        hdu = fits.PrimaryHDU(np.array(avgB))
-        hdu.header['CRVAL1'] = Felist[0][0].header['CRVAL1']
-        hdu.header['CDELT1'] = Felist[0][0].header['CDELT1']
-        hdu.writeto(outfile, clobber=True)
-        if args.debug:
-            t1 = time.time()  
-        normalize_fiberextract(Felist, Fe_e_list, Fenames, B, avgB, A, args)
-        if args.debug:
-            t2 = time.time()
-            print("Time Taken normalizing Fe files: %0.2f" %(t2-t1)) 
-        if args.debug:
-            t1 = time.time()             
-        edit_fibermodel(Felist, Fiblist, header_tup, B, avgB, A, args)
-        if args.debug:
-            t2 = time.time()
-            print("Time Taken rewriting Fib models: %0.2f" %(t2-t1))             
-    else:
-        FeFile = op.join(op.dirname(args.tracefile),
-                         'Fe' + op.basename(args.tracefile))
-        if not op.exists(FeFile) or args.overwrite:
-            fiberextract(args.tracefile, args.dist, args.fib, 
-                         args.tracefile, args.opts)
-        if args.plot:
-            plot_fiberextract(FeFile, args.psize, args.fsize, args.outfile)
+    Felist = []
+    Fe_e_list = []
+    Fiblist = []
+    Fenames = []
+    if args.debug:
+        t1 = time.time()
+    for uca in ucam:
+        for sp in SIDE:
+            skyfiles, distfile, fibfile = make_sky_filenames(args, uca, sp)
+            if not op.exists(distfile):
+                print("%s does not exist" %distfile)
+                continue
+            if not op.exists(fibfile):
+                print("%s does not exist" %fibfile)
+                continue
+            for sky in skyfiles:
+                FeFile = op.join(args.outfolder,'Fe%s' %(op.basename(sky)))
+                FeFile_e = op.join(args.outfolder,'e.Fe%s' %(op.basename(sky)))
+                Fiblist.append(fibfile)
+                Fenames.append(FeFile)
+                if not op.exists(FeFile) or args.overwrite:
+                    fiberextract(sky, distfile, fibfile, 
+                              op.join(args.outfolder, "%s" %(op.basename(sky))), 
+                              args.opts)
+                Felist.append(fits.open(FeFile))
+                Fe_e_list.append(fits.open(FeFile_e))
+                #outfile = op.join(args.outfolder, 'FePlot_cam%s_%s.pdf' 
+                #                                                    %(uca, sp))
+                #if args.plot:
+                #    plot_fiberextract(FeFile, args.psize, args.fsize, 
+                #                      outfile)
+    if args.debug:
+        t2 = time.time()
+        print("Time Taken Extracting Fibers or Gathering Data: %0.2f" %(t2-t1))
+    outfile = op.join(args.outfolder, 'Avg_IFU_spectrum.fits')
+    if args.debug:
+        t1 = time.time()
+    B, avgB = throughput_fiberextract(Felist, args)
+    if args.debug:
+        t2 = time.time()
+        print("Time Taken fitting splines to Fe files: %0.2f" %(t2-t1))
+    header_tup = (Felist[0][0].header['NAXIS1'], 
+                  Felist[0][0].header['CRVAL1'], 
+                  Felist[0][0].header['CDELT1'])
+    if args.debug:
+        t1 = time.time()      
+    A = get_fiber_amps(Fiblist, Felist, header_tup, args)
+    if args.debug:
+        t2 = time.time()
+        print("Time Taken getting fiber amps: %0.2f" %(t2-t1)) 
+    hdu = fits.PrimaryHDU(np.array(avgB))
+    hdu.header['CRVAL1'] = Felist[0][0].header['CRVAL1']
+    hdu.header['CDELT1'] = Felist[0][0].header['CDELT1']
+    hdu.writeto(outfile, clobber=True)
+    if args.debug:
+        t1 = time.time()  
+    normalize_fiberextract(Felist, Fe_e_list, Fenames, B, avgB, A, args)
+    if args.debug:
+        t2 = time.time()
+        print("Time Taken normalizing Fe files: %0.2f" %(t2-t1)) 
+    if args.debug:
+        t1 = time.time()             
+    edit_fibermodel(Felist, Fiblist, header_tup, B, avgB, A, args)
+    if args.debug:
+        t2 = time.time()
+        print("Time Taken rewriting Fib models: %0.2f" %(t2-t1))             
         
 if __name__ == "__main__":
     main()
