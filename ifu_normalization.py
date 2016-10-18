@@ -251,24 +251,12 @@ def parse_arg(args):
 
     p = ap.ArgumentParser(formatter_class=ap.ArgumentDefaultsHelpFormatter)
 
-    p.add_argument('-t','--tracefile', dest='tracefile', 
-                   help="""Traceframe for plotting""", default=None)
-    p.add_argument('-d', '--dist', dest='dist',  default=None,
-                   help="""Distortion model file""")
-    p.add_argument('-f', '--fib', dest='fib', default=None,
-                   help="""Fiber model file""")
     p.add_argument('-F', '--folder', dest='folder', default=None,
                    help="""Folder for skyframes""")
     p.add_argument('-C', '--calfolder', dest='calfolder', default=None,
                    help="""Folder for twighlights and cals""")
     p.add_argument('-O', '--outfolder', dest='outfolder', default=None,
                    help="""Folder for twighlights and cals""")
-    p.add_argument('-s', '--size', dest='psize', default=150,
-                   help="""Size of the postage stamps to plot""")
-    p.add_argument('-fs', '--nfibers', dest='fsize', default=20,
-                   help="""Number of fibers used in each postage plot""")
-    p.add_argument('-S', '--step', dest='step', default=10,
-                   help="""Step size for the distortion overplot""")
     p.add_argument('-o', '--options', dest='opts', 
                    default="-n 1032 -W 3500,5500 -P",
                    help="""Fiberextract options.""")
@@ -302,7 +290,8 @@ def parse_arg(args):
     return args
 
 def specid_to_ifuslot(specid):
-    loc = fplane_file[:,4] == int(specid)
+    loc = np.where(np.abs(fplane_file[:,4] == float(specid))<0.1)[0]
+    print(loc)
     ifuslot = "%03d" %fplane_file[loc,0]
     return ifuslot
     

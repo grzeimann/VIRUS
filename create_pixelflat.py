@@ -8,12 +8,13 @@ Created on Mon Aug 15 16:06:44 2016
 import argparse as ap
 import glob
 import os
-import pyfits
+from astropy.io import fits
 import os.path as op
 import shutil
 import re
 from scipy.stats import sigmaclip
 from scipy.signal import medfilt2d
+from utils import imbox, biweight_location, biweight_midvariance
 import numpy as np
 import datetime
     
@@ -62,7 +63,7 @@ class VirusFrame:
                                                 + self.type + '.fits')
                 self.indname[amp] = (self.basename + '_' + self.ifuslot + amp 
                                      + '_' + self.type + '.fits')
-                hdulist = pyfits.open(rootname)
+                hdulist = fits.open(rootname)
                 trim = re.split('[\[ \] \: \,]', hdulist[0].header['TRIMSEC'])[1:-1]
                 self.trimsec[amp] = [int(t)-((i+1)%2) for i,t in enumerate(trim)]
                 bias = re.split('[\[ \] \: \,]', hdulist[0].header['BIASSEC'])[1:-1]
@@ -94,32 +95,35 @@ def parse_args(argv=None):
     parser = ap.ArgumentParser(description=description,
                             formatter_class=ap.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument("flt", nargs='?', type=str, help='''Location of the flt files (either
+    parser.add_argument("--flt", nargs='?', type=str, help='''Location of the flt files (either
                         pixel flats or fiber flats).  For example: 
                         "/work/03946/hetdex/maverick/virus_lab/20160309/camra0000005"''')
                         
-    parser.add_argument("drk", nargs='?', type=str, help='''Location of the drk files.  
+    parser.add_argument("--drk", nargs='?', type=str, help='''Location of the drk files.  
                         For example: 
                         "/work/03946/hetdex/maverick/virus_lab/20160309/camra0000006"''')
                         
-    parser.add_argument("camra", nargs='?', type=int, help='''Number of the camra you plan to examine.
+    parser.add_argument("--camra", nargs='?', type=int, help='''Number of the camra you plan to examine.
                         For example:                     
                         12 or 012."''')
                         
-    parser.add_argument("binning", nargs='?', type=str, help='''Whether the pixel flats should be binned or not?"''',
+    parser.add_argument("--binning", nargs='?', type=str, help='''Whether the pixel flats should be binned or not?"''',
+                        default = False)  
+
+    parser.add_argument("--join", nargs='?', type=str, help='''Whether the pixel flats should be binned or not?"''',
                         default = False)  
                         
-    parser.add_argument("newlab", nargs='?', type=str, help='''Was the data taken on or after March 07, 2016?  
+    parser.add_argument("--newlab", nargs='?', type=str, help='''Was the data taken on or after March 07, 2016?  
                         Should be a True or False input.  If none is given, the default is True."''',
                         default = True)
 
-    parser.add_argument("runclean", nargs='?', type=str, 
+    parser.add_argument("--runclean", nargs='?', type=str, 
                         help='''Copy files from flt and drk folders, 
                         if False, then run from existing folders''',
                         default = True) 
                         
-    parser.add_argument("smoothing", type=str, help="Smoothing size (y,x)",
-                        default = '(100,1)')
+    parser.add_argument("--smoothing", type=str, help="Smoothing size (y,x)",
+                        default = '(101,101)')
 
     args = parser.parse_args(args=argv)
 
@@ -157,9 +161,9 @@ def addkeywordHeader(fits, keyword, value, comment=None):
 
 def subtractfits(frame, amp, image=None, value=None):
     
-    if value:
+    if value is not None:
         frame.fits[amp] -= value    
-    if image:
+    if image is not None:
         if frame.fits[amp].shape == image.data.shape:
             frame.fits[amp] -= image.data
         else:
@@ -182,11 +186,33 @@ def meanfits(frames, amp):
     bigarray = np.array([f.fits[amp][f.trimsec[amp][2]:f.trimsec[amp][3],
                                      f.trimsec[amp][0]:f.trimsec[amp][1]] 
                                      for f in frames])
-    return np.median(bigarray, axis=0)   
+    return biweight_location(bigarray, axis=(0,))   
+    
+def biweight_filter_2d(image, width, adaptive=False, tol=0.001):
+    a,b = image.shape
+    if len(width) > 1:
+        xw = width[0]
+        yw = width[1]
+    else:
+        xw = width[0]
+        yw = width[0]
+    smooth = np.zeros(image.shape)
+    var = np.zeros(image.shape)
+
+    for i in xrange(b):
+        for j in xrange(a):
+            xl = np.max([0,i-xw])
+            yl = np.max([0,j-yw])
+            xh = np.min([b-1,i+xw])
+            yh = np.min([a-1,j+yw])
+            loc = (j-yl) * (xh+1-xl) + (i-xl)
+            smooth[j,i] = biweight_location(np.delete(image[yl:yh+1,xl:xh+1],(loc)))
+            var[j,i] = biweight_midvariance(np.delete(image[yl:yh+1,xl:xh+1],(loc)))
+    return smooth, var
     
     
-def writefits(fits, args, outfile):
-    p = pyfits.PrimaryHDU(data=fits)
+def writefits(fitsfile, args, outfile):
+    p = fits.PrimaryHDU(data=fitsfile)
     p.header['SPECID'] = ("%i" %(args.camra), 'Spectrograph ID')
     p.header['HISTORY'] = ("Created on %s" %(datetime.datetime.now().strftime(
                                                       "%y/%m/%d at %H:%M:%S")))
@@ -257,8 +283,10 @@ def main():
         overscansub(dframe, sp)
         meanflat = meanfits(fframe, sp)
         meandark = meanfits(dframe, sp)
+        #[subtractfits(frame, sp, image=meandark) for frame in fframe]
         flat_minus_dark = meanflat - meandark
-        smooth = medfilt2d(flat_minus_dark,(args.smoothy,args.smoothx))
+        smooth = medfilt2d(flat_minus_dark,(1,args.smoothx))
+        smooth = medfilt2d(smooth,(args.smoothy,1))
         pixelflat = flat_minus_dark / smooth
         if args.binning:
             pixelflat_amp[sp] = pixelflat[:,0::2]/2. + pixelflat[:,1::2]/2.
@@ -271,20 +299,24 @@ def main():
     a,b = pixelflat_amp[SPEC[0]].shape
     pixelflat_L = np.zeros((2*a,b))
     pixelflat_R = np.zeros((2*a,b))
-    if args.newlab:
-        pixelflat_L[:a,:] = pixelflat_amp["LL"]
-        pixelflat_L[a:,:] = pixelflat_amp["LU"][::-1,::-1] # Flip x and y
-        pixelflat_R[:a,:] = pixelflat_amp["RU"]
-        pixelflat_R[a:,:] = pixelflat_amp["RL"][::-1,::-1] # Flip x and y
-    else:
-        pixelflat_L[:a,:] = pixelflat_amp["LL"][:,::-1] # Flip x
-        pixelflat_L[a:,:] = pixelflat_amp["LU"][:,::-1] # Flip x
-        pixelflat_R[:a,:] = pixelflat_amp["RU"][::-1,::-1] # Flip x and y
-        pixelflat_R[a:,:] = pixelflat_amp["RL"][::-1,::-1] # Flip x and y       
-    name_L = "pixelflat_cam%03d_L.fits" %(args.camra)
-    writefits(pixelflat_L, args, op.join(newdir, name_L))
-    name_R = "pixelflat_cam%03d_R.fits" %(args.camra)
-    writefits(pixelflat_R, args, op.join(newdir, name_R))
+    for sp in SPEC:
+        name = "pixelflat_cam%03d_%s.fits" %(args.camra, sp)
+        writefits(np.array(pixelflat_amp[sp]), args, op.join(newdir, name))
+    if args.join:
+        if args.newlab:
+            pixelflat_L[:a,:] = pixelflat_amp["LL"]
+            pixelflat_L[a:,:] = pixelflat_amp["LU"][::-1,::-1] # Flip x and y
+            pixelflat_R[:a,:] = pixelflat_amp["RU"]
+            pixelflat_R[a:,:] = pixelflat_amp["RL"][::-1,::-1] # Flip x and y
+        else:
+            pixelflat_L[:a,:] = pixelflat_amp["LL"][:,::-1] # Flip x
+            pixelflat_L[a:,:] = pixelflat_amp["LU"][:,::-1] # Flip x
+            pixelflat_R[:a,:] = pixelflat_amp["RU"][::-1,::-1] # Flip x and y
+            pixelflat_R[a:,:] = pixelflat_amp["RL"][::-1,::-1] # Flip x and y       
+        name_L = "pixelflat_cam%03d_L.fits" %(args.camra)
+        writefits(pixelflat_L, args, op.join(newdir, name_L))
+        name_R = "pixelflat_cam%03d_R.fits" %(args.camra)
+        writefits(pixelflat_R, args, op.join(newdir, name_R))
 
 
 if __name__ == '__main__':

@@ -7,6 +7,7 @@ Created on Wed Oct  5 18:12:13 2016
 
 import numpy as np
 from numpy import ma
+from bspline import Bspline
 
 def median_absolute_deviation(a, axis=None):
     """Compute the median absolute deviation.
@@ -312,3 +313,5 @@ def imbox(a, dim=(10,10)):
     
 
     return M + (d * u * mask).sum(axis=axis) / (u * mask).sum(axis=axis)
+    
+
