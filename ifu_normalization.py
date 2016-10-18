@@ -259,7 +259,7 @@ def parse_arg(args):
                    help="""Fiber model file""")
     p.add_argument('-F', '--folder', dest='folder', default=None,
                    help="""Folder for skyframes""")
-    p.add_argument('-F', '--calfolder', dest='folder', default=None,
+    p.add_argument('-C', '--calfolder', dest='calfolder', default=None,
                    help="""Folder for twighlights and cals""")
     p.add_argument('-O', '--outfolder', dest='outfolder', default=None,
                    help="""Folder for twighlights and cals""")
