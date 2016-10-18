@@ -290,11 +290,9 @@ def parse_arg(args):
     return args
 
 def specid_to_ifuslot(specid):
-    print(specid)
-    print(fplane_file)
     loc = np.where(np.abs(fplane_file[:,3] - float(specid))<0.1)[0]
-    print(loc)
     ifuslot = "%03d" %fplane_file[loc,0]
+    print(ifuslot)
     return ifuslot
     
 def make_sky_filenames(args, specid, side):
