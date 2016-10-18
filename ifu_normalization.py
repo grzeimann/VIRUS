@@ -292,14 +292,13 @@ def parse_arg(args):
 def specid_to_ifuslot(specid):
     loc = np.where(np.abs(fplane_file[:,3] - float(specid))<0.1)[0]
     ifuslot = "%03d" %fplane_file[loc,0]
-    print(ifuslot)
     return ifuslot
     
 def make_sky_filenames(args, specid, side):
     if args.twi:
         sky_fn = op.join(args.calfolder, 'mastertrace_twi_%s_%s.fits' %(specid, side))
     else:
-        sky_fn = op.join(args.folder,'c%s', 'sci', 'Sky*%s_sci_%s.fits' %(specid,
+        sky_fn = op.join(args.folder,'c%s' %specid, 'sci', 'Sky*%s_sci_%s.fits' %(
                                               specid_to_ifuslot(specid), side))
     skyfiles = glob.glob(sky_fn)    
     distfile = op.join(args.calfolder, 'mastertrace_twi_%s_%s.dist' %(specid, side))    
