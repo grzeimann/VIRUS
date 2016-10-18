@@ -341,7 +341,7 @@ def main():
                 #                      outfile)
     if args.debug:
         t2 = time.time()
-        print("Time Taken Extracting Fibers or Gathering Data: %0.2f" %(t2-t1))
+        print("Time Taken Extracting Fibers and/or Gathering Data: %0.2f" %(t2-t1))
     outfile = op.join(args.outfolder, 'Avg_IFU_spectrum.fits')
     if args.debug:
         t1 = time.time()
