@@ -34,7 +34,13 @@ for field in fields:
         if not cat2.size:
             continue
         if not cat3.size:
-            continue        
+            continue
+        if cat1.dim < 2:
+            cat1 = cat1[np.newaxis,:]
+        if cat2.dim < 2:
+            cat2 = cat2[np.newaxis,:]
+        if cat3.dim < 2:
+            cat3 = cat3[np.newaxis,:]
         for i, icx in enumerate(cat1[:,1]):
             for j, jcx in enumerate(cat2[:,1]):
                 for k, kcx in enumerate(cat3[:,1]):
