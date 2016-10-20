@@ -16,14 +16,14 @@ ucam = ["027"]
 fields = ["HF10", "HF11", "HF12", "HF15", "HF16", "HF17", "HF23", "HF47",
           "HF49", "HF50", "HF55", "HF56"]
 
-mnx1 = -.5
-mnx2 = -1.5
-mnx3 = -1.0
+mnx1 = 0
+mnx2 = 0
+mnx3 = 0
 mny1 = 0.
-mny2 = 1.
-mny3 = -1.
+mny2 = 0
+mny3 = 0
 
-thresh = 1.5
+thresh = 3
 dither1 = []
 dither2 = []
 dither3 = []
