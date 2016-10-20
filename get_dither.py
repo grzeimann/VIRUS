@@ -80,14 +80,15 @@ for field in fields:
     matches[:,3:] = matches[:,3:] - mny[:,np.newaxis]
     dx = biweight_location(matches[:,:3],axis=(0,))
     dy = biweight_location(matches[:,3:],axis=(0,))
-    dither1.append(np.array([dx[0],dy[0]]))
-    dither2.append(np.array([dx[1],dy[1]]))
-    dither3.append(np.array([dx[2],dy[2]]))
+    dither1.append(np.array([dx[0]-dx[0],dy[0]]-dy[0]))
+    dither2.append(np.array([dx[1]-dx[0],dy[1]]-dy[0]))
+    dither3.append(np.array([dx[2]-dx[0],dy[2]]-dy[0]))
     print('''Field: %s
                    D1: (%0.2f, %0.2f)
                    D2: (%0.2f, %0.2f)
                    D3: (%0.2f, %0.2f)
-          ''' % (field, dx[0], dy[0], dx[1], dy[1], dx[2], dy[2]))
+          ''' % (field, dx[0]-dx[0], dy[0]-dy[0], dx[1]-dx[0], dy[1]-dy[0], 
+                 dx[2]-dx[0], dy[2]-dy[0]))
     
     
                         
