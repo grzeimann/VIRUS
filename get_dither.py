@@ -29,6 +29,12 @@ for field in fields:
         cat1 = np.loadtxt(D1)
         cat2 = np.loadtxt(D1)
         cat3 = np.loadtxt(D1)
+        if not cat1:
+            continue
+        if not cat2:
+            continue
+        if not cat3:
+            continue
         for i, icx in enumerate(cat1[:,1]):
             for j, jcx in enumerate(cat2[:,1]):
                 for k, kcx in enumerate(cat3[:,1]):
