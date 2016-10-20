@@ -1,0 +1,43 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Oct 19 20:07:35 2016
+
+@author: gregz
+"""
+
+import numpy as np
+import os.path as op
+
+ucam = ["004", "008", "012", "013",  "016", "017", "020", "024", "025", "027",
+        "032", "037", "038", "041", "047", "051"]
+        
+fields = ["HF10", "HF11", "HF12", "HF15", "HF16", "HF17", "HF23", "HF47",
+          "HF49", "HF50", "HF55", "HF56"]
+
+thresh = 3.
+
+for field in fields:
+    matches = []        
+    for specid in ucam:
+        folder = op.join('/work/00115/gebhardt/maverick/sci', field, 'c'+specid)
+        D1 = op.join(folder, 'd1_cont.dat')
+        D2 = op.join(folder, 'd2_cont.dat')
+        D3 = op.join(folder, 'd3_cont.dat')
+        cat1 = np.loadtxt(D1)
+        cat2 = np.loadtxt(D1)
+        cat3 = np.loadtxt(D1)
+        for i, icx in enumerate(cat1[:,1]):
+            for j, jcx in enumerate(cat2[:,1]):
+                for k, kcx in enumerate(cat3[:,1]):
+                    if (np.abs(icx-jcx)<thresh and np.abs(icx-kcx)<thresh 
+                                 and np.abs(jcx-kcx)<thresh):
+                         if (np.abs(cat1[i,2]-cat2[j,2])<thresh 
+                                 and np.abs(cat1[i,2]-cat3[k,2])<thresh 
+                                 and np.abs(cat2[j,2]-cat3[k,2])<thresh):
+                             matches.append(np.array([icx, jcx, kcx, cat1[i,2],
+                                                      cat2[j,2], cat3[k,2]]))
+                         else:
+                             continue
+                    else:
+                        continue
+                        
