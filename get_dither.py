@@ -73,7 +73,6 @@ for field in fields:
                              continue
                     else:
                         continue
-    print(matches)
     if not matches:
         continue
     matches = np.vstack(matches)
@@ -81,17 +80,22 @@ for field in fields:
     mny = biweight_location(matches[:,3:],axis=(1,))
     matches[:,:3] = matches[:,:3] - mnx[:,np.newaxis]
     matches[:,3:] = matches[:,3:] - mny[:,np.newaxis]
-    print(matches[:,0:1] - matches[:,:3])
-    print(matches[:,3:4] - matches[:,3:])
+    print('''Field: %s''')
+    for i in xrange(len(matches[:,0])):
+        dx = matches[i,0:1] - matches[i,:3]
+        dy = matches[i,3:4] - matches[i,3:]
+        print("  D1: (%0.2f, %0.2f)")
+        print("  D2: (%0.2f, %0.2f)")
+        print("  D3: (%0.2f, %0.2f)")
     dx = biweight_location(matches[:,:3],axis=(0,))
     dy = biweight_location(matches[:,3:],axis=(0,))
     dither1.append(np.array([dx[0]-dx[0],dy[0]]-dy[0]))
     dither2.append(np.array([dx[0]-dx[1],dy[0]]-dy[1]))
     dither3.append(np.array([dx[0]-dx[2],dy[0]]-dy[2]))
     print('''Field: %s
-                   D1: (%0.2f, %0.2f)
-                   D2: (%0.2f, %0.2f)
-                   D3: (%0.2f, %0.2f)
+                   <D1>: (%0.2f, %0.2f)
+                   <D2>: (%0.2f, %0.2f)
+                   <D3>: (%0.2f, %0.2f)
           ''' % (field, dx[0]-dx[0], dy[0]-dy[0], dx[0] - dx[1], dy[0]-dy[1], 
                  dx[0]-dx[2], dy[0]-dy[2]))
     
