@@ -16,7 +16,14 @@ ucam = ["004", "008", "012", "013",  "016", "017", "020", "024", "025", "027",
 fields = ["HF10", "HF11", "HF12", "HF15", "HF16", "HF17", "HF23", "HF47",
           "HF49", "HF50", "HF55", "HF56"]
 
-thresh = 3.
+mnx1 = 0
+mnx2 = 0
+mnx3 = 0
+mny1 = 0
+mny2 = 0
+mny3 = 0
+
+thresh = 3
 dither1 = []
 dither2 = []
 dither3 = []
@@ -53,11 +60,11 @@ for field in fields:
         for i, icx in enumerate(cat1[:,1]):
             for j, jcx in enumerate(cat2[:,1]):
                 for k, kcx in enumerate(cat3[:,1]):
-                    if (np.abs(icx-jcx)<thresh and np.abs(icx-kcx)<thresh 
-                                 and np.abs(jcx-kcx)<thresh):
-                         if (np.abs(cat1[i,2]-cat2[j,2])<thresh 
-                                 and np.abs(cat1[i,2]-cat3[k,2])<thresh 
-                                 and np.abs(cat2[j,2]-cat3[k,2])<thresh):
+                    if (np.abs(icx-jcx+mnx1)<thresh and np.abs(icx-kcx+mnx2)<thresh 
+                                 and np.abs(jcx-kcx+mnx3)<thresh):
+                         if (np.abs(cat1[i,2]-cat2[j,2]+mny1)<thresh 
+                                 and np.abs(cat1[i,2]-cat3[k,2]+mny2)<thresh 
+                                 and np.abs(cat2[j,2]-cat3[k,2]+mny3)<thresh):
                              matches.append(np.array([icx, jcx, kcx, cat1[i,2],
                                                       cat2[j,2], cat3[k,2]]))
                          else:
@@ -70,6 +77,7 @@ for field in fields:
     mny = biweight_location(matches[:,3:],axis=(1,))
     matches[:,:3] = matches[:,:3] - mnx[:,np.newaxis]
     matches[:,3:] = matches[:,3:] - mny[:,np.newaxis]
+    print(matches)
     dx = biweight_location(matches[:,:3],axis=(0,))
     dy = biweight_location(matches[:,3:],axis=(0,))
     dither1.append(np.array([dx[0],dy[0]]))
