@@ -73,6 +73,7 @@ for field in fields:
                              continue
                     else:
                         continue
+    print(matches)
     matches = np.vstack(matches)
     mnx = biweight_location(matches[:,:3],axis=(1,))
     mny = biweight_location(matches[:,3:],axis=(1,))
