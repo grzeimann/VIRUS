@@ -78,6 +78,8 @@ for field in fields:
     mny = biweight_location(matches[:,3:],axis=(1,))
     matches[:,:3] = matches[:,:3] - mnx[:,np.newaxis]
     matches[:,3:] = matches[:,3:] - mny[:,np.newaxis]
+    print(matches[:,0] - matches[:,:3])
+    print(matches[:,3] - matches[:,3:])
     dx = biweight_location(matches[:,:3],axis=(0,))
     dy = biweight_location(matches[:,3:],axis=(0,))
     dither1.append(np.array([dx[0]-dx[0],dy[0]]-dy[0]))
