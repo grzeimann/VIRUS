@@ -43,8 +43,8 @@ for field in fields:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             cat1 = np.loadtxt(D1)
-            cat2 = np.loadtxt(D1)
-            cat3 = np.loadtxt(D1)
+            cat2 = np.loadtxt(D2)
+            cat3 = np.loadtxt(D3)
         if not cat1.size:
             continue
         if not cat2.size:
@@ -67,8 +67,8 @@ for field in fields:
                                  and np.abs(cat2[j,2]-cat3[k,2]+mny3)<thresh):
                              matches.append(np.array([icx, jcx, kcx, cat1[i,2],
                                                       cat2[j,2], cat3[k,2]]))
-                             print(icx, jcx, kcx, cat1[i,2],
-                                                      cat2[j,2], cat3[k,2])
+                             #print(icx, jcx, kcx, cat1[i,2],
+                             #                         cat2[j,2], cat3[k,2])
                          else:
                              continue
                     else:
