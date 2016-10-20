@@ -64,8 +64,8 @@ for field in fields:
     matches = np.vstack(matches)
     mnx = biweight_location(matches[:,:3],axis=(1,))
     mny = biweight_location(matches[:,3:],axis=(1,))
-    matches[:,:3] -= mnx
-    matches[:,3:] -= mny
+    matches[:,:3] = matches[:,:3] - mnx
+    matches[:,3:] = matches[:,3:] - mny
     dx = biweight_location(matches[:,:3],axis=(0,))
     dy = biweight_location(matches[:,3:],axis=(0,))
     dither1.append(np.array([dx[0],dy[0]]))
