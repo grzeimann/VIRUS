@@ -84,9 +84,9 @@ for field in fields:
     for i in xrange(len(matches[:,0])):
         dx = matches[i,0:1] - matches[i,:3]
         dy = matches[i,3:4] - matches[i,3:]
-        print("  D1: (%0.2f, %0.2f)")
-        print("  D2: (%0.2f, %0.2f)")
-        print("  D3: (%0.2f, %0.2f)")
+        print("  D1: (%0.2f, %0.2f)" %(dx[0],dy[0]))
+        print("  D2: (%0.2f, %0.2f)" %(dx[1],dy[1]))
+        print("  D3: (%0.2f, %0.2f)" %(dx[2],dy[2]))
     dx = biweight_location(matches[:,:3],axis=(0,))
     dy = biweight_location(matches[:,3:],axis=(0,))
     dither1.append(np.array([dx[0]-dx[0],dy[0]]-dy[0]))
