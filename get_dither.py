@@ -5,6 +5,7 @@ Created on Wed Oct 19 20:07:35 2016
 @author: gregz
 """
 
+import warnings
 import numpy as np
 import os.path as op
 from utils import biweight_location
@@ -32,9 +33,11 @@ for field in fields:
             continue
         if not op.exists(D3):
             continue
-        cat1 = np.loadtxt(D1)
-        cat2 = np.loadtxt(D1)
-        cat3 = np.loadtxt(D1)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cat1 = np.loadtxt(D1)
+            cat2 = np.loadtxt(D1)
+            cat3 = np.loadtxt(D1)
         if not cat1.size:
             continue
         if not cat2.size:
@@ -62,6 +65,7 @@ for field in fields:
                     else:
                         continue
     matches = np.vstack(matches)
+    print(matches.shape)
     mnx = biweight_location(matches[:,:3],axis=(1,))
     mny = biweight_location(matches[:,3:],axis=(1,))
     matches[:,:3] = matches[:,:3] - mnx[:,np.newaxis]
