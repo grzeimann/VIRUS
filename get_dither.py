@@ -67,17 +67,17 @@ for field in fields:
                                  and np.abs(cat2[j,2]-cat3[k,2]+mny3)<thresh):
                              matches.append(np.array([icx, jcx, kcx, cat1[i,2],
                                                       cat2[j,2], cat3[k,2]]))
+                             print(icx, jcx, kcx, cat1[i,2],
+                                                      cat2[j,2], cat3[k,2])
                          else:
                              continue
                     else:
                         continue
     matches = np.vstack(matches)
-    print(matches.shape)
     mnx = biweight_location(matches[:,:3],axis=(1,))
     mny = biweight_location(matches[:,3:],axis=(1,))
     matches[:,:3] = matches[:,:3] - mnx[:,np.newaxis]
     matches[:,3:] = matches[:,3:] - mny[:,np.newaxis]
-    print(matches)
     dx = biweight_location(matches[:,:3],axis=(0,))
     dy = biweight_location(matches[:,3:],axis=(0,))
     dither1.append(np.array([dx[0],dy[0]]))
