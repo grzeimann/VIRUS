@@ -26,6 +26,12 @@ for field in fields:
         D1 = op.join(folder, 'd1_cont.dat')
         D2 = op.join(folder, 'd2_cont.dat')
         D3 = op.join(folder, 'd3_cont.dat')
+        if not op.exists(D1):
+            continue
+        if not op.exists(D2):
+            continue
+        if not op.exists(D3):
+            continue
         cat1 = np.loadtxt(D1)
         cat2 = np.loadtxt(D1)
         cat3 = np.loadtxt(D1)
