@@ -7,6 +7,7 @@ Created on Wed Oct 19 20:07:35 2016
 
 import numpy as np
 import os.path as op
+from utils import biweight_location
 
 ucam = ["004", "008", "012", "013",  "016", "017", "020", "024", "025", "027",
         "032", "037", "038", "041", "047", "051"]
@@ -15,7 +16,9 @@ fields = ["HF10", "HF11", "HF12", "HF15", "HF16", "HF17", "HF23", "HF47",
           "HF49", "HF50", "HF55", "HF56"]
 
 thresh = 3.
-
+dither1 = []
+dither2 = []
+dither3 = []
 for field in fields:
     matches = []        
     for specid in ucam:
@@ -40,4 +43,21 @@ for field in fields:
                              continue
                     else:
                         continue
+    matches = np.vstack(matches)
+    mnx = biweight_location(matches[:,:3],axis=(1,))
+    mny = biweight_location(matches[:,3:],axis=(1,))
+    matches[:,:3] -= mnx
+    matches[:,3:] -= mny
+    dx = biweight_location(matches[:,:3],axis=(0,))
+    dy = biweight_location(matches[:,3:],axis=(0,))
+    dither1.append(np.array([dx[0],dy[0]]))
+    dither2.append(np.array([dx[1],dy[1]]))
+    dither3.append(np.array([dx[2],dy[2]]))
+    print('''Field: %s
+                   D1: (%0.2f, %0.2f)
+                   D2: (%0.2f, %0.2f)
+                   D3: (%0.2f, %0.2f)
+          ''' % (field, dx[0], dy[0], dx[1], dy[1], dx[2], dy[2]))
+    
+    
                         
