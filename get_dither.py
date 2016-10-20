@@ -35,6 +35,7 @@ for field in fields:
             continue
         if not cat3:
             continue
+        print(cat1)
         for i, icx in enumerate(cat1[:,1]):
             for j, jcx in enumerate(cat2[:,1]):
                 for k, kcx in enumerate(cat3[:,1]):
