@@ -25,6 +25,7 @@ import os.path as op
 import textwrap
 import re
 from utils import biweight_location
+from progressbar import ProgressBar
 
 _dataframe = DF() 
 plt.ioff()   
@@ -170,13 +171,17 @@ def main():
         ifuslot = CAM_IFUSLOT_DICT[spec]
         lower_folder_struct = op.join('virus', 'virus*', 'exp*', 'virus',
                                       '2*_%s*zro.fits' %ifuslot)
+        print("Working on CAMRA %s" %spec)
+        progress = ProgressBar(len(args.cal_dirs), fmt=ProgressBar.FULL)
         for date in args.cal_dirs:
             files = glob.glob(op.join(date,lower_folder_struct))
             for fn in files:
                 build_dataframe(_dataframe, op.basename(date), fn, spec)
+            progress.current+=1
+        progress.done()
     fig = plt.figure(figsize=(8,6))
-    (_dataframe.query('(overscan > 200) and (overscan < 2000) and AMP == "LL"')
-         .plot(kind='scatter', y='PetalRatio', use_index=True))
+    (_dataframe.query('overscan > 200 and overscan < 2000 and AMP=="LL"')
+         .plot(kind='scatter', y='overscan', use_index=True))
     plt.savefig(op.join(args.output,'test_LL.pdf'),dpi=150)
     plt.close(fig)
             
