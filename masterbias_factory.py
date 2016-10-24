@@ -110,7 +110,7 @@ def parse_args(argv=None):
 
 def build_dataframe(_dataframe, date, fn, args):
     F = fits.open(fn)
-    specid = F[0].header['SPECID'].replace(" ", "")
+    specid = "%03d" %F[0].header['SPECID']
     if specid in args.specid:
         blank, txlow, txhigh, tylow, tyhigh, blank = re.split('[: \[ \] ,]', 
                                                             F[0].header['TRIMSEC'])
@@ -146,7 +146,6 @@ def build_dataframe(_dataframe, date, fn, args):
     
 def main():
     args = parse_args()
-    print(args.specid)
     lower_folder_struct = op.join('virus','virus*','exp*','virus','2*zro.fits')
     for date in args.cal_dirs:
         files = glob.glob(op.join(date,lower_folder_struct))
