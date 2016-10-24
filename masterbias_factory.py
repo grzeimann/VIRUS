@@ -125,11 +125,20 @@ def build_dataframe(_dataframe, date, fn):
     overscan = biweight_location(F[0].data[bylow:byhigh,bxlow:bxhigh])
     amp = (F[0].header['CCDPOS'].replace(" ", "") 
            + F[0].header['CCDHALF'].replace(" ", ""))
-    A = pd.Series([fn, txlow, txhigh, tylow, tyhigh, bxlow, bxhigh, bylow, 
-                   byhigh, overscan, F[0].header['SPECID'], amp])
-    data = DF(A, index=[date+F[0].header['UT']], columns=['filename', 'TRIM_XL', 'TRIM_XH', 
-             'TRIM_YL', 'TRIM_YH','BIAS_XL', 'BIAS_XH', 'BIAS_YL', 'BIAS_YH', 
-             'overscan', 'SPECID', 'AMP'])
+    specid = F[0].header['SPECID']
+    A = {'filename' : pd.Series(fn, index=[date+F[0].header['UT']]),
+         'TRIM_XL' : pd.Series(txlow, index=[date+F[0].header['UT']]),
+         'TRIM_XH' : pd.Series(txhigh, index=[date+F[0].header['UT']]),
+         'TRIM_YL' : pd.Series(tylow, index=[date+F[0].header['UT']]),
+         'TRIM_YH' : pd.Series(tyhigh, index=[date+F[0].header['UT']]),
+         'BIAS_XL' : pd.Series(bxlow, index=[date+F[0].header['UT']]),
+         'BIAS_XH' : pd.Series(bxhigh, index=[date+F[0].header['UT']]),
+         'BIAS_YL' : pd.Series(bylow, index=[date+F[0].header['UT']]),
+         'BIAS_YH' : pd.Series(byhigh, index=[date+F[0].header['UT']]),
+         'overscan' : pd.Series(overscan, index=[date+F[0].header['UT']]),
+         'SPECID' : pd.Series(specid, index=[date+F[0].header['UT']]),
+         'AMP' : pd.Series(amp, index=[date+F[0].header['UT']])} 
+    data = DF(A)
     print(data)
     _dataframe.append(data)
     
