@@ -165,7 +165,7 @@ def build_dataframe(_dataframe, date, fn, spec):
 def main():
     args = parse_args()
     for spec in args.specid:
-        ifuslot = CAM_IFUSLOT_DICT(spec)
+        ifuslot = CAM_IFUSLOT_DICT[spec]
         lower_folder_struct = op.join('virus', 'virus*', 'exp*', 'virus',
                                       '2*_%s*zro.fits' %ifuslot)
         for date in args.cal_dirs:
