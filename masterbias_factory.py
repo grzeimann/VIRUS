@@ -141,7 +141,7 @@ def main():
     args = parse_args()
     lower_folder_struct = op.join('virus','virus*','exp*','virus','2*zro.fits')
     _dataframe = DF()    
-    for date in args.cal_dir:
+    for date in args.cal_dirs:
         files = glob.glob(op.join(date,lower_folder_struct))
         for fn in files:
             build_dataframe(_dataframe, date, fn) 
