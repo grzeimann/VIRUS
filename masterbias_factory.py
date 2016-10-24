@@ -26,7 +26,8 @@ from utils import biweight_location
 
 
 AMPS = ["LL", "LU", "RL", "RU"]
-SPECID = ["004","008","012","013","016","017","020","024","025","027","032","037","038","041","047","051"]
+SPECID = ["004", "008", "012", "013", "016", "017", "020", "024", "025", "027",
+          "032", "037", "038", "041", "047", "051"]
 
 
 def parse_args(argv=None):
@@ -133,9 +134,9 @@ def build_dataframe(_dataframe, date, fn):
     _dataframe(F[0].header['SPECID'], index=[date], columns=['SPECID']) 
     amp = (F[0].header['CCDPOS'].replace(" ", "") 
            + F[0].header['CCDHALF'].replace(" ", ""))
-    _dataframe(amp, index=[date], columns=['AMP']) 
-       
- 
+    _dataframe(amp, index=[date], columns=['AMP'])
+    _dataframe(F[0].header['UT'], index=[date], columns=['UT'])
+    
 def main():
     args = parse_args()
     lower_folder_struct = op.join('virus','virus*','exp*','virus','2*zro.fits')
