@@ -125,12 +125,12 @@ def build_dataframe(_dataframe, date, fn):
     overscan = biweight_location(F[0].data[bylow:byhigh,bxlow:bxhigh])
     amp = (F[0].header['CCDPOS'].replace(" ", "") 
            + F[0].header['CCDHALF'].replace(" ", ""))
-    print(fn, overscan)
     A = pd.Series([fn, txlow, txhigh, tylow, tyhigh, bxlow, bxhigh, bylow, 
                    byhigh, overscan, F[0].header['SPECID'], amp])
     data = DF(A, index=[date+F[0].header['UT']], columns=['filename', 'TRIM_XL', 'TRIM_XH', 
              'TRIM_YL', 'TRIM_YH','BIAS_XL', 'BIAS_XH', 'BIAS_YL', 'BIAS_YH', 
              'overscan', 'SPECID', 'AMP'])
+    print(data)
     _dataframe.append(data)
     
     
