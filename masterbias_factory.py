@@ -11,6 +11,8 @@ It is required to input the date and obsid for the science folders
 """
 
 from __future__ import print_function
+import matplotlib
+matplotlib.use('agg')
 import argparse as ap
 from astropy.io import fits
 import numpy as np
@@ -24,7 +26,8 @@ import textwrap
 import re
 from utils import biweight_location
 
-_dataframe = DF()    
+_dataframe = DF() 
+plt.ioff()   
 
 AMPS = ["LL", "LU", "RL", "RU"]
 
@@ -158,7 +161,6 @@ def build_dataframe(_dataframe, date, fn, spec):
              'SPECID' : pd.Series(specid, index=[date+'T'+F[0].header['UT']]),
              'AMP' : pd.Series(amp, index=[date+'T'+F[0].header['UT']])} 
         data = DF(A)
-        print(data)
         _dataframe.append(data)
     
     
@@ -172,7 +174,11 @@ def main():
             files = glob.glob(op.join(date,lower_folder_struct))
             for fn in files:
                 build_dataframe(_dataframe, op.basename(date), fn, spec)
-    print(_dataframe)
+    fig = plt.figure(figsize=(8,6))
+    (_dataframe.query('(overscan > 200) and (overscan < 2000) and AMP == "LL"')
+         .plot(kind='scatter', y='PetalRatio', use_index=True))
+     plt.savefig('test_LL.pdf',dpi=150)
+     plt.close()
             
 
    
