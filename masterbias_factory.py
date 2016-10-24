@@ -146,6 +146,7 @@ def build_dataframe(_dataframe, date, fn, args):
     
 def main():
     args = parse_args()
+    print(args.specid)
     lower_folder_struct = op.join('virus','virus*','exp*','virus','2*zro.fits')
     for date in args.cal_dirs:
         files = glob.glob(op.join(date,lower_folder_struct))
