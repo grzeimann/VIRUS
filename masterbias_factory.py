@@ -25,10 +25,28 @@ import re
 from utils import biweight_location
 
 _dataframe = DF()    
+
 AMPS = ["LL", "LU", "RL", "RU"]
+
 SPECID = ["004", "008", "012", "013", "016", "017", "020", "024", "025", "027",
           "032", "037", "038", "041", "047", "051"]
 
+CAM_IFUSLOT_DICT = {'004':'093',
+                    '037':'074',
+                    '027':'075',                
+                    '047':'076',
+                    '024':'073',
+                    '013':'084',
+                    '016':'085',
+                    '041':'086',
+                    '051':'083',
+                    '008':'094',
+                    '025':'095',
+                    '038':'096',
+                    '020':'103',
+                    '032':'104',
+                    '012':'105',
+                    '017':'106',}
 
 def parse_args(argv=None):
     """Parse the command line arguments
@@ -108,10 +126,10 @@ def parse_args(argv=None):
     return args
     
 
-def build_dataframe(_dataframe, date, fn, args):
+def build_dataframe(_dataframe, date, fn, spec):
     F = fits.open(fn)
     specid = "%03d" %F[0].header['SPECID']
-    if specid in args.specid:
+    if specid == spec:
         blank, txlow, txhigh, tylow, tyhigh, blank = re.split('[: \[ \] ,]', 
                                                             F[0].header['TRIMSEC'])
         txlow                = int(txlow)-1
@@ -146,11 +164,14 @@ def build_dataframe(_dataframe, date, fn, args):
     
 def main():
     args = parse_args()
-    lower_folder_struct = op.join('virus','virus*','exp*','virus','2*zro.fits')
-    for date in args.cal_dirs:
-        files = glob.glob(op.join(date,lower_folder_struct))
-        for fn in files:
-            build_dataframe(_dataframe, op.basename(date), fn, args)
+    for spec in args.specid:
+        ifuslot = CAM_IFUSLOT_DICT(spec)
+        lower_folder_struct = op.join('virus', 'virus*', 'exp*', 'virus',
+                                      '2*_%s*zro.fits' %ifuslot)
+        for date in args.cal_dirs:
+            files = glob.glob(op.join(date,lower_folder_struct))
+            for fn in files:
+                build_dataframe(_dataframe, op.basename(date), fn, spec)
     print(_dataframe)
             
 
