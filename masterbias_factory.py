@@ -161,8 +161,7 @@ def build_dataframe(_dataframe, date, fn, spec):
              'SPECID' : pd.Series(specid, index=[date+'T'+F[0].header['UT']]),
              'AMP' : pd.Series(amp, index=[date+'T'+F[0].header['UT']])} 
         data = DF(A)
-        _dataframe.append(data)
-        print(_dataframe)
+        _dataframe = _dataframe.append(data)
         return(_dataframe)
     
     
