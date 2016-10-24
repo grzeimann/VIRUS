@@ -24,7 +24,7 @@ import textwrap
 import re
 from utils import biweight_location
 
-
+_dataframe = DF()    
 AMPS = ["LL", "LU", "RL", "RU"]
 SPECID = ["004", "008", "012", "013", "016", "017", "020", "024", "025", "027",
           "032", "037", "038", "041", "047", "051"]
@@ -122,29 +122,27 @@ def build_dataframe(_dataframe, date, fn):
     bxhigh               = int(bxhigh)
     bylow                = int(bylow)-1
     byhigh               = int(byhigh)     
-    _dataframe(fn, index=[date], columns=['filename']) 
-    _dataframe(pd.Series([txlow, txhigh, tylow, tyhigh]), 
-               index=[date], columns=['TRIM_XL', 'TRIM_XH', 'TRIM_YL', 
-               'TRIM_YH']) 
-    _dataframe(pd.Series([bxlow, bxhigh, bylow, byhigh]), 
-               index=[date], columns=['BIAS_XL', 'BIAS_XH', 'BIAS_YL', 
-               'BIAS_YH'])     
     overscan = biweight_location(F[0].data[bxlow:bxhigh,bylow:byhigh])
-    _dataframe(overscan, index=[date], columns=['overscan']) 
-    _dataframe(F[0].header['SPECID'], index=[date], columns=['SPECID']) 
     amp = (F[0].header['CCDPOS'].replace(" ", "") 
            + F[0].header['CCDHALF'].replace(" ", ""))
-    _dataframe(amp, index=[date], columns=['AMP'])
-    _dataframe(F[0].header['UT'], index=[date], columns=['UT'])
+
+    A = pd.Series([fn, txlow, txhigh, tylow, tyhigh, bxlow, bxhigh, bylow, 
+                   byhigh, overscan, F[0].header['SPECID'], amp, 
+                   F[0].header['UT']])
+    data = DF(A, index=[date], columns=['filename', 'TRIM_XL', 'TRIM_XH', 
+             'TRIM_YL', 'TRIM_YH','BIAS_XL', 'BIAS_XH', 'BIAS_YL', 'BIAS_YH', 
+             'overscan', 'SPECID', 'AMP', 'UT'])
+    _dataframe.append(data)
+    
     
 def main():
     args = parse_args()
     lower_folder_struct = op.join('virus','virus*','exp*','virus','2*zro.fits')
-    _dataframe = DF()    
     for date in args.cal_dirs:
         files = glob.glob(op.join(date,lower_folder_struct))
         for fn in files:
-            build_dataframe(_dataframe, date, fn) 
+            build_dataframe(_dataframe, date, fn)
+    print(_dataframe)
             
 
    
