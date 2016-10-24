@@ -162,6 +162,7 @@ def build_dataframe(_dataframe, date, fn, spec):
              'AMP' : pd.Series(amp, index=[date+'T'+F[0].header['UT']])} 
         data = DF(A)
         _dataframe.append(data)
+        print(_dataframe)
         return(_dataframe)
     
     
