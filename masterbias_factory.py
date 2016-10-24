@@ -27,7 +27,6 @@ import re
 from utils import biweight_location
 from progressbar import ProgressBar
 
-_dataframe = DF() 
 plt.ioff()   
 
 AMPS = ["LL", "LU", "RL", "RU"]
@@ -167,6 +166,7 @@ def build_dataframe(_dataframe, date, fn, spec):
     
 def main():
     args = parse_args()
+    _dataframe = DF()
     for spec in args.specid:
         ifuslot = CAM_IFUSLOT_DICT[spec]
         lower_folder_struct = op.join('virus', 'virus*', 'exp*', 'virus',
@@ -176,7 +176,7 @@ def main():
         for date in args.cal_dirs:
             files = glob.glob(op.join(date,lower_folder_struct))
             for fn in files:
-                build_dataframe(_dataframe, op.basename(date), fn, spec)
+                _dataframe = build_dataframe(_dataframe, op.basename(date), fn, spec)
             progress.current+=1
             progress()
         progress.done()
