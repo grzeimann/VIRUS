@@ -124,21 +124,21 @@ def build_dataframe(_dataframe, date, fn, args):
         bxhigh               = int(bxhigh)
         bylow                = int(bylow)-1
         byhigh               = int(byhigh)    
-        overscan = biweight_location(F[0].data[bylow:byhigh,bxlow:bxhigh])
+        over = biweight_location(F[0].data[bylow:byhigh,bxlow:bxhigh])
         amp = (F[0].header['CCDPOS'].replace(" ", "") 
                + F[0].header['CCDHALF'].replace(" ", ""))
-        A = {'filename' : pd.Series(fn, index=[date+F[0].header['UT']]),
-             'TRIM_XL' : pd.Series(txlow, index=[date+F[0].header['UT']]),
-             'TRIM_XH' : pd.Series(txhigh, index=[date+F[0].header['UT']]),
-             'TRIM_YL' : pd.Series(tylow, index=[date+F[0].header['UT']]),
-             'TRIM_YH' : pd.Series(tyhigh, index=[date+F[0].header['UT']]),
-             'BIAS_XL' : pd.Series(bxlow, index=[date+F[0].header['UT']]),
-             'BIAS_XH' : pd.Series(bxhigh, index=[date+F[0].header['UT']]),
-             'BIAS_YL' : pd.Series(bylow, index=[date+F[0].header['UT']]),
-             'BIAS_YH' : pd.Series(byhigh, index=[date+F[0].header['UT']]),
-             'overscan' : pd.Series(overscan, index=[date+F[0].header['UT']]),
-             'SPECID' : pd.Series(specid, index=[date+F[0].header['UT']]),
-             'AMP' : pd.Series(amp, index=[date+F[0].header['UT']])} 
+        A = {'filename' : pd.Series(fn, index=[date+'T'+F[0].header['UT']]),
+             'TRIM_XL' : pd.Series(txlow, index=[date+'T'+F[0].header['UT']]),
+             'TRIM_XH' : pd.Series(txhigh, index=[date+'T'+F[0].header['UT']]),
+             'TRIM_YL' : pd.Series(tylow, index=[date+'T'+F[0].header['UT']]),
+             'TRIM_YH' : pd.Series(tyhigh, index=[date+'T'+F[0].header['UT']]),
+             'BIAS_XL' : pd.Series(bxlow, index=[date+'T'+F[0].header['UT']]),
+             'BIAS_XH' : pd.Series(bxhigh, index=[date+'T'+F[0].header['UT']]),
+             'BIAS_YL' : pd.Series(bylow, index=[date+'T'+F[0].header['UT']]),
+             'BIAS_YH' : pd.Series(byhigh, index=[date+'T'+F[0].header['UT']]),
+             'overscan' : pd.Series(over, index=[date+'T'+F[0].header['UT']]),
+             'SPECID' : pd.Series(specid, index=[date+'T'+F[0].header['UT']]),
+             'AMP' : pd.Series(amp, index=[date+'T'+F[0].header['UT']])} 
         data = DF(A)
         print(data)
         _dataframe.append(data)
@@ -150,7 +150,7 @@ def main():
     for date in args.cal_dirs:
         files = glob.glob(op.join(date,lower_folder_struct))
         for fn in files:
-            build_dataframe(_dataframe, date, fn, args)
+            build_dataframe(_dataframe, op.basename(date), fn, args)
     print(_dataframe)
             
 
