@@ -183,8 +183,8 @@ def main():
         progress.done()
     fig = plt.figure(figsize=(8,6))
     print(_dataframe)
-    (_dataframe.query('overscan > 200 & overscan < 2000 & AMP=="LL"')
-         .plot(kind='scatter', y='overscan', use_index=True))
+    df = (_dataframe.query('overscan > 200 & overscan < 2000 & AMP=="LL"'))
+    plt.scatter(df.index, df['overscan'])
     plt.savefig(op.join(args.output,'test_LL.pdf'),dpi=150)
     plt.close(fig)
             
