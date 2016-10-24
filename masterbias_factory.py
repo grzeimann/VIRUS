@@ -122,8 +122,7 @@ def build_dataframe(_dataframe, date, fn):
     bxhigh               = int(bxhigh)
     bylow                = int(bylow)-1
     byhigh               = int(byhigh)    
-    print(bxlow,bxhigh,bylow,byhigh)
-    overscan = biweight_location(F[0].data[bxlow:bxhigh,bylow:byhigh])
+    overscan = biweight_location(F[0].data[bylow:byhigh,bxlow:bxhigh])
     amp = (F[0].header['CCDPOS'].replace(" ", "") 
            + F[0].header['CCDHALF'].replace(" ", ""))
     print(fn, overscan)
