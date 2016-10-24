@@ -110,7 +110,7 @@ def parse_args(argv=None):
 
 def build_dataframe(_dataframe, date, fn, args):
     F = fits.open(fn)
-    specid = F[0].header['SPECID']
+    specid = F[0].header['SPECID'].replace(" ", "")
     if specid in args.specid:
         blank, txlow, txhigh, tylow, tyhigh, blank = re.split('[: \[ \] ,]', 
                                                             F[0].header['TRIMSEC'])
