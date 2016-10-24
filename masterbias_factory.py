@@ -177,8 +177,8 @@ def main():
     fig = plt.figure(figsize=(8,6))
     (_dataframe.query('(overscan > 200) and (overscan < 2000) and AMP == "LL"')
          .plot(kind='scatter', y='PetalRatio', use_index=True))
-     plt.savefig('test_LL.pdf',dpi=150)
-     plt.close()
+    plt.savefig(op.join(args.output,'test_LL.pdf'),dpi=150)
+    plt.close(fig)
             
 
    
