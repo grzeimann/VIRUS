@@ -173,26 +173,27 @@ def build_dataframe(_dataframe, date, fn, spec):
         amp = (F[0].header['CCDPOS'].replace(" ", "") 
                + F[0].header['CCDHALF'].replace(" ", ""))
         avg = get_region_values(F) 
-        A = {'filename' : pd.Series(fn, index=[date+'T'+F[0].header['UT']]),
-             'TRIM_XL' : pd.Series(txlow, index=[date+'T'+F[0].header['UT']]),
-             'TRIM_XH' : pd.Series(txhigh, index=[date+'T'+F[0].header['UT']]),
-             'TRIM_YL' : pd.Series(tylow, index=[date+'T'+F[0].header['UT']]),
-             'TRIM_YH' : pd.Series(tyhigh, index=[date+'T'+F[0].header['UT']]),
-             'BIAS_XL' : pd.Series(bxlow, index=[date+'T'+F[0].header['UT']]),
-             'BIAS_XH' : pd.Series(bxhigh, index=[date+'T'+F[0].header['UT']]),
-             'BIAS_YL' : pd.Series(bylow, index=[date+'T'+F[0].header['UT']]),
-             'BIAS_YH' : pd.Series(byhigh, index=[date+'T'+F[0].header['UT']]),
-             'overscan' : pd.Series(over, index=[date+'T'+F[0].header['UT']]),
-             'SPECID' : pd.Series(specid, index=[date+'T'+F[0].header['UT']]),
-             'AMP' : pd.Series(amp, index=[date+'T'+F[0].header['UT']]),
-             'OBS' : pd.Series(obs, index=[date+'T'+F[0].header['UT']]),
-             'EXP' : pd.Series(exp, index=[date+'T'+F[0].header['UT']])}
-        for i,val in enumerate(avg):
-            strv = 'VAL' + str(i)
-            A[strv] = pd.Series(val, index=[date+'T'+F[0].header['UT']])
-        data = DF(A)
-        _dataframe = _dataframe.append(data)
-        return(_dataframe)
+        if not np.all(np.isfinite(avg)):
+            A = {'filename' : pd.Series(fn, index=[date+'T'+F[0].header['UT']]),
+                 'TRIM_XL' : pd.Series(txlow, index=[date+'T'+F[0].header['UT']]),
+                 'TRIM_XH' : pd.Series(txhigh, index=[date+'T'+F[0].header['UT']]),
+                 'TRIM_YL' : pd.Series(tylow, index=[date+'T'+F[0].header['UT']]),
+                 'TRIM_YH' : pd.Series(tyhigh, index=[date+'T'+F[0].header['UT']]),
+                 'BIAS_XL' : pd.Series(bxlow, index=[date+'T'+F[0].header['UT']]),
+                 'BIAS_XH' : pd.Series(bxhigh, index=[date+'T'+F[0].header['UT']]),
+                 'BIAS_YL' : pd.Series(bylow, index=[date+'T'+F[0].header['UT']]),
+                 'BIAS_YH' : pd.Series(byhigh, index=[date+'T'+F[0].header['UT']]),
+                 'overscan' : pd.Series(over, index=[date+'T'+F[0].header['UT']]),
+                 'SPECID' : pd.Series(specid, index=[date+'T'+F[0].header['UT']]),
+                 'AMP' : pd.Series(amp, index=[date+'T'+F[0].header['UT']]),
+                 'OBS' : pd.Series(obs, index=[date+'T'+F[0].header['UT']]),
+                 'EXP' : pd.Series(exp, index=[date+'T'+F[0].header['UT']])}
+            for i,val in enumerate(avg):
+                strv = 'VAL' + str(i)
+                A[strv] = pd.Series(val, index=[date+'T'+F[0].header['UT']])
+            data = DF(A)
+            _dataframe = _dataframe.append(data)
+    return(_dataframe)
     
     
 def main():
