@@ -11,12 +11,12 @@ import re
 
 class ProgressBar(object):
     DEFAULT = 'Progress: %(bar)s %(percent)3d%%'
-    FULL = '%(bar)s %(current)d/%(total)d (%(percent)3d%%) %(remaining)d to go'
+    FULL = '%(name)s %(bar)s %(current)d/%(total)d (%(percent)3d%%) %(remaining)d to go'
 
-    def __init__(self, total, width=40, fmt=DEFAULT, symbol='=',
+    def __init__(self, total, name, width=40, fmt=DEFAULT, symbol='=',
                  output=sys.stderr):
         assert len(symbol) == 1
-
+        self.name = name
         self.total = total
         self.width = width
         self.symbol = symbol
@@ -33,6 +33,7 @@ class ProgressBar(object):
         bar = '[' + self.symbol * size + ' ' * (self.width - size) + ']'
 
         args = {
+            'name' : self.name,
             'total': self.total,
             'bar': bar,
             'current': self.current,
