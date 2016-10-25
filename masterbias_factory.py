@@ -141,8 +141,8 @@ def get_region_values(F, dx=0.05):
     a,b = F[0].data.shape
     avg = np.zeros((9,))
     cnt=0
-    for j in [9., 0.5, 1.]:
-        for i in [1., 0.5, 9.]:
+    for j in [0.9, 0.5, 0.1]:
+        for i in [0.1, 0.5, 0.9]:
             xl = int(i*b - dx*b/2.)
             xh = int(i*b + dx*b/2.)
             yl = int(j*a - dx*a/2.)
