@@ -211,7 +211,7 @@ def main():
             progress.current+=1
             progress()
         progress.done()
-    #fig = plt.figure(figsize=(8,6))
+    fig = plt.figure(figsize=(8,6))
     df = _dataframe.query('overscan > 200 and overscan < 2000 and AMP=="LL"')
     print(df)
     print(df.shape)
