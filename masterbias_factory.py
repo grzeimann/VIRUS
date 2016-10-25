@@ -173,7 +173,7 @@ def build_dataframe(_dataframe, date, fn, spec):
         amp = (F[0].header['CCDPOS'].replace(" ", "") 
                + F[0].header['CCDHALF'].replace(" ", ""))
         avg = get_region_values(F) 
-        if not np.all(np.isfinite(avg)):
+        if np.all(np.isfinite(avg)):
             A = {'filename' : pd.Series(fn, index=[date+'T'+F[0].header['UT']]),
                  'TRIM_XL' : pd.Series(txlow, index=[date+'T'+F[0].header['UT']]),
                  'TRIM_XH' : pd.Series(txhigh, index=[date+'T'+F[0].header['UT']]),
