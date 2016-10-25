@@ -170,9 +170,7 @@ def build_dataframe(_dataframe, date, fn, spec):
         bxhigh               = int(bxhigh)
         bylow                = int(bylow)-1
         byhigh               = int(byhigh)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            over = biweight_location(F[0].data[bylow:byhigh,bxlow:bxhigh])
+        over = biweight_location(F[0].data[bylow:byhigh,bxlow:bxhigh])
         amp = (F[0].header['CCDPOS'].replace(" ", "") 
                + F[0].header['CCDHALF'].replace(" ", ""))
         temp = F[0].header['DETTEMP']
@@ -210,12 +208,13 @@ def main():
         ifuslot = CAM_IFUSLOT_DICT[spec]
         lower_folder_struct = op.join('virus', 'virus*', 'exp*', 'virus',
                                       '2*_%s*zro.fits' %ifuslot)
-        print("Working on CAMRA %s:" %spec)
         progress = ProgressBar(len(args.cal_dirs), fmt=ProgressBar.FULL)
         for date in args.cal_dirs:
             files = glob.glob(op.join(date,lower_folder_struct))
             for fn in files:
-                _dataframe = build_dataframe(_dataframe, op.basename(date), fn, spec)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    _dataframe = build_dataframe(_dataframe, op.basename(date), fn, spec)
             progress.current+=1
             progress()
         progress.done()
@@ -233,12 +232,18 @@ def main():
             plt.figure(fig1.number)
             plt.scatter(df['overscan'],df[strv]-df['overscan'], edgecolor='none',
                         s=25, color=colors[i,0:3], alpha=0.3)
+            plt.xlabel('Overscan [ADU]')
+            plt.ylabel('BIAS [ADU]')
             plt.figure(fig2.number)
             plt.scatter(df['temp'],df[strv]-df['overscan'], edgecolor='none',
                         s=25, color=colors[i,0:3], alpha=0.3)
+            plt.xlabel('TEMP')
+            plt.ylabel('BIAS [ADU]')
             plt.figure(fig3.number)
             plt.scatter(df['mjd'],df[strv]-df['overscan'], edgecolor='none',
-                        s=25, color=colors[i,0:3], alpha=0.3)            
+                        s=25, color=colors[i,0:3], alpha=0.3)
+            plt.xlabel('MJD')
+            plt.ylabel('Bias [ADU]')
         plt.figure(fig1.number)
         plt.savefig(op.join(args.output,'bias_struct_%s_%s_overscan.pdf' %(spec, amp)),dpi=150)
         plt.figure(fig2.number)
