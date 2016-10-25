@@ -219,7 +219,7 @@ def main():
         df = _dataframe.query('AMP=="%s"'%amp)
         for i in xrange(9):
             strv = 'VAL' + str(i)
-            df = df[~(is_outlier(df['overscan'])+is_outlier(df[strv]))]
+            df = df[(is_outlier(df['overscan'])<1)*(is_outlier(df[strv])<1)]
             plt.scatter(df['overscan'],df[strv]-df['overscan'], edgecolor='none',
                         s=25, color=colors[i,0:3], alpha=0.3)
         plt.savefig(op.join(args.output,'bias_struct_%s_%s.pdf' %(spec, amp)),dpi=150)
