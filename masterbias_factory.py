@@ -135,7 +135,21 @@ def get_basename_depth(filename, depth=1):
         filename = op.dirname(filename)
         cnt+=1
     return op.basename(filename)
-        
+
+
+def get_region_values(F, dx=0.05):
+    a,b = F[0].data.shape
+    avg = np.zeros((9,))
+    cnt=0
+    for j in [9., 0.5, 1.]:
+        for i in [1., 0.5, 9.]:
+            xl = int(i*b - dx*b/2.)
+            xh = int(i*b + dx*b/2.)
+            yl = int(j*a - dx*a/2.)
+            yh = int(j*a + dx*a/2.)
+            avg[cnt] = biweight_location(F[0].data[yl:yh,xl:xh]) 
+            cnt+=1 
+    return avg
 
 def build_dataframe(_dataframe, date, fn, spec):
     F = fits.open(fn)
@@ -158,6 +172,7 @@ def build_dataframe(_dataframe, date, fn, spec):
         over = biweight_location(F[0].data[bylow:byhigh,bxlow:bxhigh])
         amp = (F[0].header['CCDPOS'].replace(" ", "") 
                + F[0].header['CCDHALF'].replace(" ", ""))
+        avg = get_region_values(F) 
         A = {'filename' : pd.Series(fn, index=[date+'T'+F[0].header['UT']]),
              'TRIM_XL' : pd.Series(txlow, index=[date+'T'+F[0].header['UT']]),
              'TRIM_XH' : pd.Series(txhigh, index=[date+'T'+F[0].header['UT']]),
@@ -171,7 +186,10 @@ def build_dataframe(_dataframe, date, fn, spec):
              'SPECID' : pd.Series(specid, index=[date+'T'+F[0].header['UT']]),
              'AMP' : pd.Series(amp, index=[date+'T'+F[0].header['UT']]),
              'OBS' : pd.Series(obs, index=[date+'T'+F[0].header['UT']]),
-             'EXP' : pd.Series(exp, index=[date+'T'+F[0].header['UT']])} 
+             'EXP' : pd.Series(exp, index=[date+'T'+F[0].header['UT']])}
+        for i,val in enumerate(avg):
+            strv = 'VAL' + str(i)
+            A[strv] = pd.Series(val, index=[date+'T'+F[0].header['UT']])
         data = DF(A)
         _dataframe = _dataframe.append(data)
         return(_dataframe)
@@ -197,9 +215,14 @@ def main():
     df = _dataframe.query('overscan > 200 and overscan < 2000 and AMP=="LL"')
     print(df)
     print(df.shape)
-    #     .plot(kind='scatter', y='overscan', use_index=True))
-    #plt.savefig(op.join(args.output,'test_LL.pdf'),dpi=150)
-    #plt.close(fig)
+    norm = plt.Normalize()
+    colors = plt.cm.viridis_r(norm(np.arange(9+2)))
+    for i in xrange(9):
+        strv = 'VAL' + str(i)
+        plt.scatter(df['overscan'],df[strv]-df['overscan'], edgecolor='none',
+                    s=25, color=colors[i,0:3])
+    plt.savefig(op.join(args.output,'test_LL.pdf'),dpi=150)
+    plt.close(fig)
             
 
    
