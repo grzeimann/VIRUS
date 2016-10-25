@@ -24,6 +24,7 @@ import os
 import os.path as op
 import textwrap
 import re
+import warnings
 from utils import biweight_location, is_outlier
 from progressbar import ProgressBar
 
@@ -168,8 +169,10 @@ def build_dataframe(_dataframe, date, fn, spec):
         bxlow                = int(bxlow)-1
         bxhigh               = int(bxhigh)
         bylow                = int(bylow)-1
-        byhigh               = int(byhigh)    
-        over = biweight_location(F[0].data[bylow:byhigh,bxlow:bxhigh])
+        byhigh               = int(byhigh)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            over = biweight_location(F[0].data[bylow:byhigh,bxlow:bxhigh])
         amp = (F[0].header['CCDPOS'].replace(" ", "") 
                + F[0].header['CCDHALF'].replace(" ", ""))
         temp = F[0].header['DETTEMP']
