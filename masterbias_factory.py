@@ -220,7 +220,7 @@ def main():
             strv = 'VAL' + str(i)
             plt.scatter(df['overscan'],df[strv]-df['overscan'], edgecolor='none',
                         s=25, color=colors[i,0:3])
-        plt.savefig(op.join(args.output,'test_%s.pdf' %amp),dpi=150)
+        plt.savefig(op.join(args.output,'bias_struct_%s_%s.pdf' %(spec, amp)),dpi=150)
         plt.close(fig)
             
 
