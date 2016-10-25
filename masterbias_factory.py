@@ -127,12 +127,22 @@ def parse_args(argv=None):
         args.amps = AMPS   
             
     return args
-    
+
+
+def get_basename_depth(filename, depth=1):
+    cnt=0
+    while cnt < depth:
+        filename = op.dirname(filename)
+        cnt+=1
+    return op.basename(filename)
+        
 
 def build_dataframe(_dataframe, date, fn, spec):
     F = fits.open(fn)
     specid = "%03d" %F[0].header['SPECID']
     if specid == spec:
+        exp = get_basename_depth(fn, depth=2)
+        obs = get_basename_depth(fn, depth=3)
         blank, txlow, txhigh, tylow, tyhigh, blank = re.split('[: \[ \] ,]', 
                                                             F[0].header['TRIMSEC'])
         txlow                = int(txlow)-1
@@ -159,7 +169,9 @@ def build_dataframe(_dataframe, date, fn, spec):
              'BIAS_YH' : pd.Series(byhigh, index=[date+'T'+F[0].header['UT']]),
              'overscan' : pd.Series(over, index=[date+'T'+F[0].header['UT']]),
              'SPECID' : pd.Series(specid, index=[date+'T'+F[0].header['UT']]),
-             'AMP' : pd.Series(amp, index=[date+'T'+F[0].header['UT']])} 
+             'AMP' : pd.Series(amp, index=[date+'T'+F[0].header['UT']]),
+             'OBS' : pd.Series(obs, index=[date+'T'+F[0].header['UT']]),
+             'EXP' : pd.Series(exp, index=[date+'T'+F[0].header['UT']])} 
         data = DF(A)
         _dataframe = _dataframe.append(data)
         return(_dataframe)
@@ -184,7 +196,7 @@ def main():
     #fig = plt.figure(figsize=(8,6))
     print(_dataframe)
     df = _dataframe.query('overscan > 200 and overscan < 2000 and AMP=="LL"')
-    print(df.shape)
+    print(df)
     #     .plot(kind='scatter', y='overscan', use_index=True))
     #plt.savefig(op.join(args.output,'test_LL.pdf'),dpi=150)
     #plt.close(fig)
