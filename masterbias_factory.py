@@ -211,18 +211,17 @@ def main():
             progress.current+=1
             progress()
         progress.done()
-    fig = plt.figure(figsize=(8,6))
-    df = _dataframe.query('overscan > 200 and overscan < 2000 and AMP=="LL"')
-    print(df)
-    print(df.shape)
     norm = plt.Normalize()
     colors = plt.cm.viridis_r(norm(np.arange(9+2)))
-    for i in xrange(9):
-        strv = 'VAL' + str(i)
-        plt.scatter(df['overscan'],df[strv]-df['overscan'], edgecolor='none',
-                    s=25, color=colors[i,0:3])
-    plt.savefig(op.join(args.output,'test_LL.pdf'),dpi=150)
-    plt.close(fig)
+    for amp in AMPS:
+        fig = plt.figure(figsize=(8,6))
+        df = _dataframe.query('overscan > 200 and overscan < 2000 and AMP=="%s"'%amp)
+        for i in xrange(9):
+            strv = 'VAL' + str(i)
+            plt.scatter(df['overscan'],df[strv]-df['overscan'], edgecolor='none',
+                        s=25, color=colors[i,0:3])
+        plt.savefig(op.join(args.output,'test_%s.pdf' %amp),dpi=150)
+        plt.close(fig)
             
 
    
