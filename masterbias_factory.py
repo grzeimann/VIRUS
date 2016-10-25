@@ -172,6 +172,7 @@ def build_dataframe(_dataframe, date, fn, spec):
         over = biweight_location(F[0].data[bylow:byhigh,bxlow:bxhigh])
         amp = (F[0].header['CCDPOS'].replace(" ", "") 
                + F[0].header['CCDHALF'].replace(" ", ""))
+        temp = F[0].header['DETTEMP']
         avg = get_region_values(F) 
         if np.all(np.isfinite(avg)):
             A = {'filename' : pd.Series(fn, index=[date+'T'+F[0].header['UT']]),
@@ -184,6 +185,7 @@ def build_dataframe(_dataframe, date, fn, spec):
                  'BIAS_YL' : pd.Series(bylow, index=[date+'T'+F[0].header['UT']]),
                  'BIAS_YH' : pd.Series(byhigh, index=[date+'T'+F[0].header['UT']]),
                  'overscan' : pd.Series(over, index=[date+'T'+F[0].header['UT']]),
+                 'temp' : pd.Series(temp, index=[date+'T'+F[0].header['UT']]),
                  'SPECID' : pd.Series(specid, index=[date+'T'+F[0].header['UT']]),
                  'AMP' : pd.Series(amp, index=[date+'T'+F[0].header['UT']]),
                  'OBS' : pd.Series(obs, index=[date+'T'+F[0].header['UT']]),
@@ -215,16 +217,25 @@ def main():
     norm = plt.Normalize()
     colors = plt.cm.viridis_r(norm(np.arange(9+2)))
     for amp in AMPS:
-        fig = plt.figure(figsize=(8,6))
+        fig1 = plt.figure(figsize=(8,6))
+        fig2 = plt.figure(figsize=(8,6))
         df = _dataframe.query('AMP=="%s"'%amp)
         for i in xrange(9):
             strv = 'VAL' + str(i)
-            df = df[(is_outlier(df['overscan'])<1)*(is_outlier(df[strv])<1)]
+            df = df[(is_outlier(df['overscan'])<1)*(is_outlier(df[strv])<1)*
+                    (is_outlier(df['temp'])<1)]
+            plt.figure(fig1.number)
             plt.scatter(df['overscan'],df[strv]-df['overscan'], edgecolor='none',
                         s=25, color=colors[i,0:3], alpha=0.3)
-        plt.savefig(op.join(args.output,'bias_struct_%s_%s.pdf' %(spec, amp)),dpi=150)
-        plt.close(fig)
-            
+            plt.figure(fig2.number)
+            plt.scatter(df['temp'],df[strv]-df['overscan'], edgecolor='none',
+                        s=25, color=colors[i,0:3], alpha=0.3)
+        plt.figure(fig1.number)
+        plt.savefig(op.join(args.output,'bias_struct_%s_%s_overscan.pdf' %(spec, amp)),dpi=150)
+        plt.figure(fig2.number)
+        plt.savefig(op.join(args.output,'bias_struct_%s_%s_temp.pdf' %(spec, amp)),dpi=150)
+        plt.close(fig1)
+        plt.close(fig2)
 
    
 if __name__ == '__main__':
