@@ -24,7 +24,7 @@ import os
 import os.path as op
 import textwrap
 import re
-from utils import biweight_location
+from utils import biweight_location, is_outlier
 from progressbar import ProgressBar
 
 plt.ioff()   
@@ -216,9 +216,10 @@ def main():
     colors = plt.cm.viridis_r(norm(np.arange(9+2)))
     for amp in AMPS:
         fig = plt.figure(figsize=(8,6))
-        df = _dataframe.query('overscan > 200 and overscan < 2000 and AMP=="%s"'%amp)
+        df = _dataframe.query('AMP=="%s"'%amp)
         for i in xrange(9):
             strv = 'VAL' + str(i)
+            df = df[~(is_outlier(df['overscan'])+is_outlier(df[strv]))]
             plt.scatter(df['overscan'],df[strv]-df['overscan'], edgecolor='none',
                         s=25, color=colors[i,0:3], alpha=0.3)
         plt.savefig(op.join(args.output,'bias_struct_%s_%s.pdf' %(spec, amp)),dpi=150)
