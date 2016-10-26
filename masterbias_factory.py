@@ -93,6 +93,14 @@ def parse_args(argv=None):
                         help='''Calibration Directory [REQUIRED]
                         Needs to be a string in quotes if wildcard used.''', 
                         default=None)
+                        
+    parser.add_argument("--zero", 
+                        help='''Work on zero frames.''',
+                        action="count", default=0)
+
+    parser.add_argument("--dark", 
+                        help='''Work on dark frames.''',
+                        action="count", default=0)
                                                                          
     args = parser.parse_args(args=argv)
 
@@ -205,6 +213,13 @@ def main():
     args = parse_args()
     _dataframe = DF()
     for spec in args.specid:
+        if args.dark:
+            if op.exists(op.join(args.outfolder, 'bias_DF_%s.csv' %spec)):
+                _bias_dataframe = pd.read_csv(op.join(args.outfolder, 
+                                          'bias_DF_%s.csv' %spec))
+            else:
+                print("Cannot find the dataframe for the biases".)
+                
         ifuslot = CAM_IFUSLOT_DICT[spec]
         lower_folder_struct = op.join('virus', 'virus*', 'exp*', 'virus',
                                       '2*_%s*zro.fits' %ifuslot)
@@ -220,6 +235,8 @@ def main():
         progress.done()
     norm = plt.Normalize()
     colors = plt.cm.viridis_r(norm(np.arange(9+2)))
+    if args.zero:
+        _dataframe.to_csv('bias_DF_%s.csv' %spec)
     for amp in AMPS:
         fig1 = plt.figure(figsize=(8,6))
         fig2 = plt.figure(figsize=(8,6))
@@ -243,7 +260,7 @@ def main():
             plt.scatter(df['mjd'],df[strv]-df['overscan'], edgecolor='none',
                         s=25, color=colors[i,0:3], alpha=0.3)
             plt.xlabel('MJD')
-            plt.ylabel('Bias [ADU]')
+            plt.ylabel('BIAS [ADU]')
         plt.figure(fig1.number)
         plt.savefig(op.join(args.output,'bias_struct_%s_%s_overscan.pdf' %(spec, amp)),dpi=150)
         plt.figure(fig2.number)

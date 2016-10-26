@@ -9,7 +9,7 @@ flat, and HET fiber flat data.
 """
 
 import numpy as np
-import pyfits
+from astropy.io import fits
 import argparse as ap
 import glob
 import re
@@ -19,6 +19,7 @@ import time
 import copy
 import scipy
 import matplotlib.pyplot as plt
+from utils import biweight_location, biweight_midvariance
 
 SPEC = ["LL","LU","RL","RU"]
 
@@ -351,7 +352,7 @@ def main():
     for sp in SPEC:
         beginning, ending    = zro_names[0].split(SPEC[0]) # using first zero frame
         filenameb1           = beginning + sp + ending
-        p = pyfits.open(filenameb1)
+        p = fits.open(filenameb1)
         blank, xlow, xhigh, ylow, yhigh, blank = re.split('[: \[ \] ,]',p[0].header['BIASSEC'])
         xlow                 = int(xlow)
         xhigh                = int(xhigh)
@@ -364,7 +365,7 @@ def main():
         tyhigh               = int(tyhigh)
         
         bias1                = np.array(p[0].data.copy(),dtype=np.float)
-        overscan             = np.mean(bias1[ylow:yhigh,xlow:xhigh])
+        overscan             = biweight_location(bias1[ylow:yhigh,xlow:xhigh])
         bias1                -= overscan
         bias1                = bias1[tylow:tyhigh,txlow:txhigh] 
         if args.bin_bias:
@@ -373,11 +374,11 @@ def main():
 
         beginning, ending    = flt_names[0].split(SPEC[0]) # using first zero frame
         filenameb1           = beginning + sp + ending
-        p = pyfits.open(filenameb1)
+        p = fits.open(filenameb1)
         blank, fxlow, fxhigh, fylow, fyhigh, blank = re.split('[: \[ \] ,]',p[0].header['BIASSEC'])
-        fxlow                 = int(fxlow)
+        fxlow                 = int(fxlow)-1
         fxhigh                = int(fxhigh)
-        fylow                 = int(fylow)
+        fylow                 = int(fylow)-1
         fyhigh                = int(fyhigh)
         blank, ftxlow, ftxhigh, ftylow, ftyhigh, blank = re.split('[: \[ \] ,]',p[0].header['TRIMSEC'])
         ftxlow                = int(ftxlow)-1
@@ -391,11 +392,11 @@ def main():
             beginning, ending    = flt_names[0].split(SPEC[0]) # looping through the first of the frames
             filenamef1           = beginning + sp + ending
             print("Calculating trace from: %s" %(filenamef1))
-            p                    = pyfits.open(filenamef1)
+            p                    = fits.open(filenamef1)
             gainhead[sp]         = p[0].header['GAIN']
             rdnoisehead[sp]      = p[0].header['RDNOISE']
             flat1                = np.array(p[0].data.copy(),dtype=np.float)
-            overscan             = np.mean(flat1[fylow:fyhigh,fxlow:fxhigh])
+            overscan             = biweight_location(flat1[fylow:fyhigh,fxlow:fxhigh])
             flat1                -= overscan
             flat1                = flat1[ftylow:ftyhigh,ftxlow:ftxhigh]
             T = Trace(flat1, debug=args.debug)
@@ -414,65 +415,77 @@ def main():
                 print("Time taken creating mask: %0.2f s" %(t2-t1))
         else:
             mask = np.ones(bias1.shape,dtype=bool)
+            mask[:300,:600] = False
+            mask[-300:,-600:] = False
 
         bigbias = np.zeros(bias1.shape + (nbiases,))
+        avgflat = np.zeros(bias1.shape + (npairs,))
+        avgdiff = np.zeros(bias1.shape + (npairs,))
+
         for i in xrange(nbiases):       
             beginning, ending   = zro_names[i].split(SPEC[0]) # using second zero frame
             filenameb           = beginning + sp + ending
-            p = pyfits.open(filenameb)
+            p = fits.open(filenameb)
             bias                = np.array(p[0].data.copy(), dtype=np.float)
-            overscan            = np.mean (bias[ylow:yhigh,xlow:xhigh])
+            overscan            = biweight_location (bias[ylow:yhigh,xlow:xhigh])
             bias               -= overscan
             bias                = bias[tylow:tyhigh,txlow:txhigh]
             if args.bin_bias:
                 bias = (bias[0::2,0::2] + bias[0::2,1::2] + bias[1::2,0::2] 
                         + bias[1::2,1::2])
             bigbias[:,:,i] = bias
-        rdnoiseimage     = np.std(bigbias, axis=2 )
-        avgbiasimage     = np.mean(bigbias, axis=2 )
-        rdnoiseclipped   = stats.sigmaclip(rdnoiseimage)[0]
-        readnoiseavg[sp] = np.mean(rdnoiseclipped)
+        rdnoiseimage     = biweight_midvariance(bigbias, axis=(2,) )
+        avgbiasimage     = biweight_location(bigbias, axis=(2,) )
+        readnoiseavg[sp] = biweight_location(rdnoiseimage)
         
         for i in xrange(npairs):    
-    
            beginning, ending    = flt_names[2*i].split(SPEC[0]) # looping through the first of the frames
            filenamef1           = beginning + sp + ending
-           p                    = pyfits.open(filenamef1)
+           p                    = fits.open(filenamef1)
            exptime1 = p[0].header['EXPTIME']
            readtime1 = p[0].header['READTIME']
            flat1                = np.array(p[0].data.copy(),dtype=np.float)
-           overscan             = np.mean(flat1[fylow:fyhigh,fxlow:fxhigh])
+           overscan             = biweight_location(flat1[fylow:fyhigh,fxlow:fxhigh])
            flat1                -= overscan
            flat1                = flat1[ftylow:ftyhigh,ftxlow:ftxhigh]
-           
            beginning, ending    = flt_names[2*i+1].split(SPEC[0]) # looking at consecutive pairs
            filenamef2           = beginning + sp + ending
-           p = pyfits.open(filenamef2)
+           p = fits.open(filenamef2)
            exptime2 = p[0].header['EXPTIME']
            readtime2 = p[0].header['READTIME']
            flat2                = np.array(p[0].data.copy(),dtype=np.float)
-           overscan             = np.mean(flat2[fylow:fyhigh,fxlow:fxhigh])
+           overscan             = biweight_location(flat2[fylow:fyhigh,fxlow:fxhigh])
            flat2                -= overscan
            flat2                = flat2[ftylow:ftyhigh,ftxlow:ftxhigh]
-
            x, y = np.where((flat1 > flow) * (flat1 < fhigh) * (mask))
            if len(x)>10:
-               mf1[i]  = np.mean(flat1[x,y])
-               mf2[i]  = np.mean(flat2[x,y])
-               mb  = np.mean(avgbiasimage[x,y])
+               mf1[i]  = biweight_location(flat1[x,y])
+               mf2[i]  = biweight_location(flat2[x,y])
+               mb  = biweight_location(avgbiasimage[x,y])
                df   = flat1[x,y] - flat2[x,y]*mf1[i]/mf2[i]
-               cdf  = stats.sigmaclip(df)[0]
-               sdf  = np.std(cdf)
+               sdv  = biweight_midvariance(df)
                mn   = (mf1[i] + mf2[i] - 2*mb) / 2.
-               vr   = (sdf**2 - 2.*readnoiseavg[sp]**2) / 2.
+               vr   = (sdv**2 - 2.*readnoiseavg[sp]**2) / 2.
                gain[spcount,i] = mn / vr
                read[spcount,i] = gain[spcount,i] * readnoiseavg[sp]
+               avgflat[:,:,i] = (flat1+flat2)/2.
+               avgdiff[:,:,i] = (flat1-flat2*mf1[i]/mf2[i])
                print("%s | Gain: %01.3f | RDNOISE: %01.3f | F1: %5d | F2: %5d | Var: %05.1f | E1: %3.2f | E2: %3.2f | R1: %3.2f | R2: %3.2f " %(sp, gain[spcount,i],read[spcount,i], mf1[i], mf2[i], vr, exptime1, exptime2, readtime1, readtime2))
-        gainunit[sp] = np.median(gain[spcount,( mf1 > lthresh ) * (mf2 > lthresh ) * ( mf1 < hthresh ) * (mf2 < hthresh ) * (mf1/vr<1.0)]) # Only include pixel flats above lthresh
-        readunit[sp] = np.median(read[spcount,( mf1 > lthresh ) * (mf2 > lthresh ) * ( mf1 < hthresh ) * (mf2 < hthresh ) * (mf1/vr<1.0)])
+
+        gainunit[sp] = biweight_location(gain[spcount,( mf1 > lthresh ) * (mf2 > lthresh ) * ( mf1 < hthresh ) * (mf2 < hthresh ) * (mf1/vr<1.0)]) # Only include pixel flats above lthresh
+        readunit[sp] = biweight_location(read[spcount,( mf1 > lthresh ) * (mf2 > lthresh ) * ( mf1 < hthresh ) * (mf2 < hthresh ) * (mf1/vr<1.0)])
         readnoiseavg[sp] *= gainunit[sp]
         spcount = spcount+1
-
+        bins = np.logspace(np.log10(flow),np.log10(fhigh),45)
+        gn = []
+        for i in xrange(len(bins)-1):
+            loc = np.where( (avgflat.ravel()>bins[i]) * (avgflat.ravel()<bins[i+1]) )[0]
+            std = biweight_midvariance(avgdiff.ravel()[loc])
+            vr   = (std**2 - 2.*readnoiseavg[sp]**2) / 2.
+            mn = biweight_location(avgflat.ravel()[loc])
+            print(mn, mn / vr, len(loc))
+            gn.append(mn/vr)
+        print("%s | GAIN: %01.3f" %(sp, biweight_location(gn)))
     if args.fiber_trace:
 	print('SPECID_AMP, GAIN, RDNOISE, GAIN_HEADER, RDNOISE_HEADER:')
 	for sp in SPEC:
