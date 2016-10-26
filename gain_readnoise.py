@@ -98,6 +98,17 @@ def parse_args(argv=None):
     parser.add_argument("--bin_bias", action="count", default=0, 
                         help="Bin the Bias Frames?")
 
+    parser.add_argument("--flow", type=float, 
+                        help='''Low ADU values used in Gain Measurement.''',
+                        default=1000.)
+
+    parser.add_argument("--fhigh", type=float, 
+                        help='''High ADU values used in Gain Measurement.''',
+                        default=35000.)
+
+    parser.add_argument("--fnum", type=float, 
+                        help='''Number of bins for Gain Measurement.''',
+                        default=40)
 
     parser.add_argument("--dist_from_trace", type=float, 
                         help='''Pixel distance from trace''',
@@ -334,8 +345,9 @@ def main():
     print ( "Looking at zro files in %s" %( args.zro ) )
 
         
-    flow    = 500
-    fhigh   = 45000
+    flow    = args.flow
+    fhigh   = args.fhigh
+    fnum    = args.fnum
     lthresh = 1500
     hthresh = 32000
                    
@@ -414,9 +426,9 @@ def main():
                 t2 = time.time()
                 print("Time taken creating mask: %0.2f s" %(t2-t1))
         else:
-            mask = np.ones(bias1.shape,dtype=bool)
-            mask[:300,:600] = False
-            mask[-300:,-600:] = False
+            mask = np.zeros(bias1.shape,dtype=bool)
+            a,b = bias1.shape
+            mask[(a/2-50):(a/2+50),(b/2-50):(b/2+50)] = True
 
         bigbias = np.zeros(bias1.shape + (nbiases,))
         avgflat = np.zeros(bias1.shape + (npairs,))
@@ -435,15 +447,15 @@ def main():
                         + bias[1::2,1::2])
             bigbias[:,:,i] = bias
         rdnoiseimage     = biweight_midvariance(bigbias, axis=(2,) )
-        avgbiasimage     = biweight_location(bigbias, axis=(2,) )
+#        avgbiasimage     = biweight_location(bigbias, axis=(2,) )
         readnoiseavg[sp] = biweight_location(rdnoiseimage)
         
         for i in xrange(npairs):    
            beginning, ending    = flt_names[2*i].split(SPEC[0]) # looping through the first of the frames
            filenamef1           = beginning + sp + ending
            p                    = fits.open(filenamef1)
-           exptime1 = p[0].header['EXPTIME']
-           readtime1 = p[0].header['READTIME']
+#           exptime1 = p[0].header['EXPTIME']
+#           readtime1 = p[0].header['READTIME']
            flat1                = np.array(p[0].data.copy(),dtype=np.float)
            overscan             = biweight_location(flat1[fylow:fyhigh,fxlow:fxhigh])
            flat1                -= overscan
@@ -451,41 +463,41 @@ def main():
            beginning, ending    = flt_names[2*i+1].split(SPEC[0]) # looking at consecutive pairs
            filenamef2           = beginning + sp + ending
            p = fits.open(filenamef2)
-           exptime2 = p[0].header['EXPTIME']
-           readtime2 = p[0].header['READTIME']
+#           exptime2 = p[0].header['EXPTIME']
+#           readtime2 = p[0].header['READTIME']
            flat2                = np.array(p[0].data.copy(),dtype=np.float)
            overscan             = biweight_location(flat2[fylow:fyhigh,fxlow:fxhigh])
            flat2                -= overscan
            flat2                = flat2[ftylow:ftyhigh,ftxlow:ftxhigh]
            x, y = np.where((flat1 > flow) * (flat1 < fhigh) * (mask))
            if len(x)>10:
-               mf1[i]  = biweight_location(flat1[x,y])
-               mf2[i]  = biweight_location(flat2[x,y])
-               mb  = biweight_location(avgbiasimage[x,y])
-               df   = flat1[x,y] - flat2[x,y]*mf1[i]/mf2[i]
-               sdv  = biweight_midvariance(df)
-               mn   = (mf1[i] + mf2[i] - 2*mb) / 2.
-               vr   = (sdv**2 - 2.*readnoiseavg[sp]**2) / 2.
-               gain[spcount,i] = mn / vr
-               read[spcount,i] = gain[spcount,i] * readnoiseavg[sp]
+               #mf1[i]  = biweight_location(flat1[x,y])
+               #mf2[i]  = biweight_location(flat2[x,y])
+               #mb  = biweight_location(avgbiasimage[x,y])
+               #df   = flat1[x,y] - flat2[x,y]*mf1[i]/mf2[i]
+               #sdv  = biweight_midvariance(df)
+               #mn   = (mf1[i] + mf2[i] - 2*mb) / 2.
+               #vr   = (sdv**2 - 2.*readnoiseavg[sp]**2) / 2.
+               #gain[spcount,i] = mn / vr
+               #read[spcount,i] = gain[spcount,i] * readnoiseavg[sp]
                avgflat[:,:,i] = (flat1+flat2)/2.
-               avgdiff[:,:,i] = (flat1-flat2*mf1[i]/mf2[i])
-               print("%s | Gain: %01.3f | RDNOISE: %01.3f | F1: %5d | F2: %5d | Var: %05.1f | E1: %3.2f | E2: %3.2f | R1: %3.2f | R2: %3.2f " %(sp, gain[spcount,i],read[spcount,i], mf1[i], mf2[i], vr, exptime1, exptime2, readtime1, readtime2))
+               avgdiff[:,:,i] = (flat1-flat2)#*mf1[i]/mf2[i])
+               #print("%s | Gain: %01.3f | RDNOISE: %01.3f | F1: %5d | F2: %5d | Var: %05.1f | E1: %3.2f | E2: %3.2f | R1: %3.2f | R2: %3.2f " %(sp, gain[spcount,i],read[spcount,i], mf1[i], mf2[i], vr, exptime1, exptime2, readtime1, readtime2))
 
-        gainunit[sp] = biweight_location(gain[spcount,( mf1 > lthresh ) * (mf2 > lthresh ) * ( mf1 < hthresh ) * (mf2 < hthresh ) * (mf1/vr<1.0)]) # Only include pixel flats above lthresh
-        readunit[sp] = biweight_location(read[spcount,( mf1 > lthresh ) * (mf2 > lthresh ) * ( mf1 < hthresh ) * (mf2 < hthresh ) * (mf1/vr<1.0)])
-        readnoiseavg[sp] *= gainunit[sp]
-        spcount = spcount+1
-        bins = np.logspace(np.log10(flow),np.log10(fhigh),45)
+
+        bins = np.logspace(np.log10(flow),np.log10(fhigh),fnum)
         gn = []
         for i in xrange(len(bins)-1):
-            loc = np.where( (avgflat.ravel()>bins[i]) * (avgflat.ravel()<bins[i+1]) )[0]
+            loc = np.where((avgflat.ravel()>bins[i]) * (avgflat.ravel()<bins[i+1]))[0]
             std = biweight_midvariance(avgdiff.ravel()[loc])
             vr   = (std**2 - 2.*readnoiseavg[sp]**2) / 2.
             mn = biweight_location(avgflat.ravel()[loc])
-            print(mn, mn / vr, len(loc))
+            print("%s | Gain: %01.3f | RDNOISE: %01.3f | <ADU>: %0.1f | Pixels: %i" 
+                  %(sp, mn / vr, mn / vr * readnoiseavg[sp], mn, len(loc))) 
             gn.append(mn/vr)
-        print("%s | GAIN: %01.3f" %(sp, biweight_location(gn)))
+        gainunit[sp] = biweight_location(gn) # Only include pixel flats above lthresh
+        readnoiseavg[sp] *= gainunit[sp]
+        spcount = spcount+1
     if args.fiber_trace:
 	print('SPECID_AMP, GAIN, RDNOISE, GAIN_HEADER, RDNOISE_HEADER:')
 	for sp in SPEC:
