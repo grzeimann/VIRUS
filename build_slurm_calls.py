@@ -35,7 +35,7 @@ def parse_args(argv=None):
                         Ex: "020,008".''', default = None)
 
     parser.add_argument("--num_per_slurm", nargs='?', type=str, 
-                        help='''Number of calls per slurm''', default = 16)
+                        help='''Number of calls per slurm''', default=16)
 
     parser.add_argument("--argstr", nargs='?', type=str, 
                         help='''Argument String.
@@ -196,7 +196,7 @@ def main():
                 dirn = 'd_%04.2f_b1_%04.2f_b2_%04.2f' %(i, j, k)
                 if not op.exists(dirn):
                     os.mkdir(dirn)
-                for spec in args.spec:
+                for spec in args.specid:
                     ast = ' --output %s/c%s' %(dirn, spec)
                     bst = ' --specid %s' %spec
                     cst = ' --dark_mult_val %0.2f' %i
