@@ -1,19 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Oct 27 11:31:04 2016
-
-@author: gregz
-"""
-
-# -*- coding: utf-8 -*-
-"""
-
-Science script for "quick" reduction.
-
-The script requires an output directory.  It also requires key information
-for selecting the science and calibration directories.  
-It is required to input the date and obsid for the science folders
-
 @author: gregz
 """
 from __future__ import print_function
