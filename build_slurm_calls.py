@@ -68,7 +68,7 @@ def build_slurm_file(num, fn):
 # 
 #------------------Scheduler Options--------------------
 #SBATCH -J HETDEX              # Job name
-#SBATCH -n {:i}                  # Total number of tasks
+#SBATCH -n {:d}                  # Total number of tasks
 #SBATCH -p gpu                 # Queue name
 #SBATCH -o HETDEX.o%j          # Name of stdout output file (%j expands to jobid)
 #SBATCH -t 01:20:00            # Run time (hh:mm:ss)
