@@ -218,7 +218,7 @@ def main():
                 _bias_dataframe = pd.read_csv(op.join(args.outfolder, 
                                           'bias_DF_%s.csv' %spec))
             else:
-                print("Cannot find the dataframe for the biases".)
+                print("Cannot find the dataframe for the biases.")
                 
         ifuslot = CAM_IFUSLOT_DICT[spec]
         lower_folder_struct = op.join('virus', 'virus*', 'exp*', 'virus',

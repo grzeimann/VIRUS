@@ -39,7 +39,7 @@ IFUSLOT_DICT = {'093':['004','023'],
                 '104':['032','028'],
                 #'105':['012','055'],
                 '106':['017','022'],
-                '300016':['012','999']} 
+                '999':['012','999']} 
 
 class Fibers:
     def __init__(self, N, D, order = 3):
@@ -447,6 +447,11 @@ def main():
                         + bias[1::2,1::2])
             bigbias[:,:,i] = bias
         rdnoiseimage     = biweight_midvariance(bigbias, axis=(2,) )
+        biasimage     = biweight_location(bigbias, axis=(2,) )
+        p[0].data = np.array(rdnoiseimage)
+        p.writeto('../masterbias/rdnoise_image_%s.fits' %sp,clobber=True)
+        p[0].data = np.array(biasimage)
+        p.writeto('../masterbias/bias_image_%s.fits' %sp,clobber=True)
 #        avgbiasimage     = biweight_location(bigbias, axis=(2,) )
         readnoiseavg[sp] = biweight_location(rdnoiseimage)
         
@@ -471,8 +476,8 @@ def main():
            flat2                = flat2[ftylow:ftyhigh,ftxlow:ftxhigh]
            x, y = np.where((flat1 > flow) * (flat1 < fhigh) * (mask))
            if len(x)>10:
-               #mf1[i]  = biweight_location(flat1[x,y])
-               #mf2[i]  = biweight_location(flat2[x,y])
+               mf1[i]  = biweight_location(flat1[x,y])
+               mf2[i]  = biweight_location(flat2[x,y])
                #mb  = biweight_location(avgbiasimage[x,y])
                #df   = flat1[x,y] - flat2[x,y]*mf1[i]/mf2[i]
                #sdv  = biweight_midvariance(df)
@@ -481,7 +486,7 @@ def main():
                #gain[spcount,i] = mn / vr
                #read[spcount,i] = gain[spcount,i] * readnoiseavg[sp]
                avgflat[:,:,i] = (flat1+flat2)/2.
-               avgdiff[:,:,i] = (flat1-flat2)#*mf1[i]/mf2[i])
+               avgdiff[:,:,i] = (flat1-flat2*mf1[i]/mf2[i])
                #print("%s | Gain: %01.3f | RDNOISE: %01.3f | F1: %5d | F2: %5d | Var: %05.1f | E1: %3.2f | E2: %3.2f | R1: %3.2f | R2: %3.2f " %(sp, gain[spcount,i],read[spcount,i], mf1[i], mf2[i], vr, exptime1, exptime2, readtime1, readtime2))
 
 

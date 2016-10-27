@@ -11,7 +11,7 @@ It is required to input the date and obsid for the science folders
 """
 from __future__ import print_function
 import argparse as ap
-import pyfits
+from astropy.io import fits
 import shutil
 import glob
 import os
@@ -28,7 +28,9 @@ from virus_cosmics import remove_cosmics
 usemapping           = True # manual map IFUSLOT to SPECID 
 CLEAN_AFTER_DONE     = True # clean the previous file after new one is created
 configdir    = "/work/03946/hetdex/maverick/virus_config"
-darkcurrentdir = "/work/00115/gebhardt/maverick/calib2/darks/360"
+darkcurrentdir = "/work/00115/gebhardt/maverick/cal/lib_dark"
+biasdir = "/work/00115/gebhardt/maverick/cal/lib_bias"
+
 
 # Critical naming scheme for folders and object types
 # Note the type doesn't have to initial match the folder because
@@ -149,7 +151,19 @@ def parse_args(argv=None):
                         help='''Multiplication factor applied to dark masters.
                         If this is not set, then it is calculated from the
                         science frame.''',
-                        default=None) 
+                        default=1.) 
+
+    parser.add_argument("--bias1_mult_val", type=float, 
+                        help='''Multiplication factor applied to dark masters.
+                        If this is not set, then it is calculated from the
+                        science frame.''',
+                        default=1.) 
+                        
+    parser.add_argument("--bias2_mult_val", type=float, 
+                        help='''Multiplication factor applied to dark masters.
+                        If this is not set, then it is calculated from the
+                        science frame.''',
+                        default=1.) 
 
     parser.add_argument("--cal_dir", nargs='?', type=str, 
                         help='''Calibration Directory [REQUIRED]''', 
@@ -315,7 +329,7 @@ class VirusFrame:
                                                           + '_' 
                                                           + self.type 
                                                           + '.fits' )
-                hdulist = pyfits.open(rootname)
+                hdulist = fits.open(rootname)
                 trimstr = re.split('[\[ \] ]',hdulist[0].header['TRIMSEC'])[1]
                 biasstr = re.split('[\[ \] ]',hdulist[0].header['BIASSEC'])[1]
                 self.trimsec[amp] = "\"" + trimstr + "\""
@@ -709,15 +723,35 @@ def main():
                                      run=args.run_insitu)
     
                 # Subtract Master Bias
-                masterbiasname = op.join(args.cal_dir, 'masterbias' 
+                masterbiasname = op.join(biasdir, 'masterbias' 
                                                     + '_' 
                                                     + uca 
                                                     + '_' 
                                                     + amp 
-                                                    + '.fits') 
-                cmd = CC.subtractbias(vframesselect, masterbiasname, amp, cmd, 
+                                                    + '.fits')
+                F = fits.open(masterbiasname)
+                F[0].data *= args.bias1_mult_val
+                nmasterbiasname = op.join(redux_dir, 
+                                          op.basename(masterbiasname))
+                F.writeto(nmasterbiasname,clobber=True)
+                F = fits.open(masterbiasname)
+                F[0].data *= args.bias2_mult_val
+                F.writeto(op.join(redux_dir, 
+                                  masterbiasname[:-5]+'_fordark.fits'),
+                          clobber=True)
+                cmd = CC.subtractbias(vframesselect, nmasterbiasname, amp, cmd, 
                                       run=args.run_insitu)
-            
+                if args.use_darks:
+                    masterbasename = ('masterdark' + '_' + uca + '_' + amp 
+                                         + '.fits') 
+                    masterdarkname = op.join(darkcurrentdir, masterbasename) 
+                    masterdarknamenew = op.join(redux_dir, masterbasename)
+
+                    hdu = fits.open(masterdarkname)
+                    hdu[0].data[:] = args.dark_mult_val*hdu[0].data - F[0].data
+                    hdu.writeto(masterdarknamenew, clobber=True)
+                    cmd = CC.subtractbias(vframesselect, masterdarknamenew, 
+                                          amp, cmd, run=args.run_insitu)
             # CCDCombine (multiplies by gain and joins amplifiers)
             cmd = CC.ccdcombine(vframesselect, cmd, run=args.run_insitu)
             '''Change from amps to side convention'''
@@ -735,49 +769,49 @@ def main():
                 # Subtract Dark using PYFITS and not CURE
                 # Change to CURE when implimented more seriously
 
-                if args.use_darks:
-                    if side =='R':
-                        masterbasename = ('dmasterdark' + '_' + uca + '_' + side 
-                                         + '.fits') 
-                        masterdarkname = op.join(darkcurrentdir, masterbasename) 
-                        masterdarknamenew = op.join(redux_dir, masterbasename) 
-                        if not op.exists(masterdarknamenew):
-                            shutil.copy(masterdarkname,masterdarknamenew)
-                        hdu = pyfits.open(masterdarknamenew)
-                        if args.dark_mult_val:
-                            for v in vframesselect:
-                                hdu1 = pyfits.open(build_name(v, side=side))
-                                hdu1[0].data = (hdu1[0].data 
-                                                - hdu[0].data * args.dark_mult_val)
-                                hdu1[0].header['HISTORY'] = 'subtracted:'
-                                hdu1[0].header['HISTORY'] = ('file: %s' 
-                                                            ' multiplied by %0.3f'
-                                                            % (masterbasename,
-                                                               args.dark_mult_val))
-                                with warnings.catch_warnings():
-                                    warnings.simplefilter("ignore")
-                                    hdu1.writeto(build_name(v, side=side),
-                                                 clobber=True)
-                                hdu1.close()
-                        else:
-                            # CRITICAL LINES FOR DARK SUBTRACTION
-                            mdd = np.median(hdu[0].data[1028:1036,416:616])
-                            mdv = []
-                            for v in vframesselect:
-                                hdu1 = pyfits.open(build_name(v, side=side))
-                                # CRITICAL LINES FOR DARK SUBTRACTION
-                                mdv = np.median(hdu1[0].data[1028:1036,416:616])
-                                hdu1[0].data = hdu1[0].data - hdu[0].data*mdv/mdd
-                                hdu1[0].header['HISTORY'] = 'subtracted:'
-                                hdu1[0].header['HISTORY'] = ('file: %s' 
-                                                            ' multiplied by %0.3f'
-                                                            % (masterbasename,
-                                                               mdv/mdd))
-                                with warnings.catch_warnings():
-                                    warnings.simplefilter("ignore")
-                                    hdu1.writeto(build_name(v, side=side),
-                                                 clobber=True)
-                                hdu1.close()
+#                if args.use_darks:
+#                    if side in SPECBIG:
+#                        masterbasename = ('masterdark' + '_' + uca + '_' + side 
+#                                         + '.fits') 
+#                        masterdarkname = op.join(darkcurrentdir, masterbasename) 
+#                        masterdarknamenew = op.join(redux_dir, masterbasename) 
+#                        if not op.exists(masterdarknamenew):
+#                            shutil.copy(masterdarkname,masterdarknamenew)
+#                        hdu = fits.open(masterdarknamenew)
+#                        if args.dark_mult_val:
+#                            for v in vframesselect:
+#                                hdu1 = fits.open(build_name(v, side=side))
+#                                hdu1[0].data = (hdu1[0].data 
+#                                                - hdu[0].data * args.dark_mult_val)
+#                                hdu1[0].header['HISTORY'] = 'subtracted:'
+#                                hdu1[0].header['HISTORY'] = ('file: %s' 
+#                                                            ' multiplied by %0.3f'
+#                                                            % (masterbasename,
+#                                                               args.dark_mult_val))
+#                                with warnings.catch_warnings():
+#                                    warnings.simplefilter("ignore")
+#                                    hdu1.writeto(build_name(v, side=side),
+#                                                 clobber=True)
+#                                hdu1.close()
+#                        else:
+#                            # CRITICAL LINES FOR DARK SUBTRACTION
+#                            mdd = np.median(hdu[0].data[1028:1036,416:616])
+#                            mdv = []
+#                            for v in vframesselect:
+#                                hdu1 = fits.open(build_name(v, side=side))
+#                                # CRITICAL LINES FOR DARK SUBTRACTION
+#                                mdv = np.median(hdu1[0].data[1028:1036,416:616])
+#                                hdu1[0].data = hdu1[0].data - hdu[0].data*mdv/mdd
+#                                hdu1[0].header['HISTORY'] = 'subtracted:'
+#                                hdu1[0].header['HISTORY'] = ('file: %s' 
+#                                                            ' multiplied by %0.3f'
+#                                                            % (masterbasename,
+#                                                               mdv/mdd))
+#                                with warnings.catch_warnings():
+#                                    warnings.simplefilter("ignore")
+#                                    hdu1.writeto(build_name(v, side=side),
+#                                                 clobber=True)
+#                                hdu1.close()
                 
                 opts = '-f ' + op.join(configdir, 'PixelFlats', 
                                        'pixelflat_cam%03d_%s.fits' %(int(uca), 

@@ -336,7 +336,19 @@ def dividefits(filename, opts, cmd, run=True):
     cmd.append(command)
     
     return cmd
+  
+  
+def multiplyfits(filename, opts, cmd, run=True):
+
+    command = 'multiplyfits %s %s' % (opts,filename)
     
+    if run:
+        run_cure_command(command, 0)
+    
+    cmd.append(command)
+    
+    return cmd
+
     
 def addfits(filename, opts, cmd, run=True):
 
@@ -348,7 +360,18 @@ def addfits(filename, opts, cmd, run=True):
     cmd.append(command)
         
     return cmd
+ 
+
+def subtractfits(filename, opts, cmd, run=True):
+
+    command = 'subtractfits %s %s' % (opts,filename)
     
+    if run:
+        run_cure_command(command, 0)
+
+    cmd.append(command)
+        
+    return cmd   
     
 def headfits(filename, opts, cmd, run=True):
 
