@@ -737,7 +737,7 @@ def main():
                 F = fits.open(masterbiasname)
                 F[0].data *= args.bias2_mult_val
                 F.writeto(op.join(redux_dir, 
-                                  masterbiasname[:-5]+'_fordark.fits'),
+                             op.basename(masterbiasname)[:-5]+'_fordark.fits'),
                           clobber=True)
                 cmd = CC.subtractbias(vframesselect, nmasterbiasname, amp, cmd, 
                                       run=args.run_insitu)
