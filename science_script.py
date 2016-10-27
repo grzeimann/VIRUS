@@ -733,6 +733,7 @@ def main():
                 F[0].data *= args.bias1_mult_val
                 nmasterbiasname = op.join(redux_dir, 
                                           op.basename(masterbiasname))
+                print(nmasterbiasname)
                 F.writeto(nmasterbiasname,clobber=True)
                 F = fits.open(masterbiasname)
                 F[0].data *= args.bias2_mult_val
