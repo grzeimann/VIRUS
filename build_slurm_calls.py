@@ -204,6 +204,7 @@ def main():
                     est = ' --bias2_mult_val %0.2f' %k
                     nstr = init_str + ast + bst + cst + dst + est
                     calls.append(nstr)
+    print(calls)
     i = 0
     while (i*args.num_per_slurm) < len(calls):
         fn = 'rsci_d'+str(i)
