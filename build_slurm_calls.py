@@ -34,7 +34,7 @@ def parse_args(argv=None):
                         help='''List of SPECID's for processing. 
                         Ex: "020,008".''', default = None)
 
-    parser.add_argument("--num_per_slurm", nargs='?', type=str, 
+    parser.add_argument("--num_per_slurm", nargs='?', type=int, 
                         help='''Number of calls per slurm''', default=16)
 
     parser.add_argument("--argstr", nargs='?', type=str, 
