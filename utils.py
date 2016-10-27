@@ -8,6 +8,7 @@ Created on Wed Oct  5 18:12:13 2016
 import numpy as np
 from numpy import ma
 from bspline import Bspline
+import sys
 
 def median_absolute_deviation(a, axis=None):
     """Compute the median absolute deviation.
@@ -135,7 +136,6 @@ def biweight_location(a, c=6.0, M=None, axis=None):
     """
 
     a = np.array(a, copy=False)
-    a = ma.masked_array(a, mask=(np.isinf(a)*np.isnan(a)))
 
     if M is None:
         if axis is None:
@@ -274,45 +274,6 @@ def biweight_midvariance(a, c=9.0, M=None, axis=None):
     return n ** 0.5 * ((d*mask)**2 * (1 - u * mask) ** 4).sum(axis=axis) ** 0.5\
         / np.abs(((1 - u * mask) * (1 - 5 * u * mask)).sum(axis=axis))
 
-def imbox(a, dim=(10,10)):
-    """Compute the imbox smoothing using biweight statistics
-
-    EDIT WITH DETAILS
-
-    Parameters
-    ----------
-    a : 2-d array-like 
-        Input 2-d image array
-    dim : tuple, optiional
-        smoothing scale for (x,y) respectively.
-
-    Returns
-    -------
-    imbox : 2-d array-like
-        Returns the smoothed image.
-
-    Examples
-    --------
-
-    This will generate random variates from a Gaussian distribution and return
-    the biweight location of the distribution::
-
-    >>> from utils import imbox
-    >>> from numpy.random import randn
-    >>> randim = randn(1000, 1000)
-    >>> smoothed = imbox(randim)
-
-    See Also
-    --------
-    median_absolute_deviation, biweight_location
-    
-    """
-
-    a = np.array(a, copy=False)
-    a = ma.masked_array(a, mask=(np.isinf(a)*np.isnan(a)))
-    
-
-    return M + (d * u * mask).sum(axis=axis) / (u * mask).sum(axis=axis)
     
 def is_outlier(points, thresh=3.5):
     """

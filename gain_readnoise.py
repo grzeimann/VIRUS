@@ -446,8 +446,8 @@ def main():
                 bias = (bias[0::2,0::2] + bias[0::2,1::2] + bias[1::2,0::2] 
                         + bias[1::2,1::2])
             bigbias[:,:,i] = bias
-        rdnoiseimage     = biweight_midvariance(bigbias, axis=(2,) )
-        biasimage     = biweight_location(bigbias, axis=(2,) )
+        rdnoiseimage = biweight_midvariance(bigbias, axis=(2,) )
+        biasimage = biweight_location(bigbias, axis=(2,) )
         p[0].data = np.array(rdnoiseimage)
         p.writeto('../masterbias/rdnoise_image_%s.fits' %sp,clobber=True)
         p[0].data = np.array(biasimage)
