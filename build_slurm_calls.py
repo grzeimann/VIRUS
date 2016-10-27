@@ -174,7 +174,8 @@ $TACC_LAUNCHER_DIR/paramrun SLURM $EXECUTABLE $WORKDIR $CONTROL_FILE $PHI_WORKDI
 
 echo " "
 echo " Parameteric Job Complete"
-echo " "'''.format(num, fn))
+echo " "
+'''.format(num, fn))
         f.write(s)
         f.flush()
 
