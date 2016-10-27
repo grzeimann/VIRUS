@@ -736,9 +736,6 @@ def main():
                 F.writeto(nmasterbiasname,clobber=True)
                 F = fits.open(masterbiasname)
                 F[0].data *= args.bias2_mult_val
-                F.writeto(op.join(redux_dir, 
-                             op.basename(masterbiasname)[:-5]+'_fordark.fits'),
-                          clobber=True)
                 cmd = CC.subtractbias(vframesselect, nmasterbiasname, amp, cmd, 
                                       run=args.run_insitu)
                 if args.use_darks:
@@ -746,7 +743,6 @@ def main():
                                          + '.fits') 
                     masterdarkname = op.join(darkcurrentdir, masterbasename) 
                     masterdarknamenew = op.join(redux_dir, masterbasename)
-
                     hdu = fits.open(masterdarkname)
                     hdu[0].data[:] = args.dark_mult_val*hdu[0].data - F[0].data
                     hdu.writeto(masterdarknamenew, clobber=True)
