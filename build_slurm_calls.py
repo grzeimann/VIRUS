@@ -205,9 +205,9 @@ def main():
                     nstr = init_str + ast + bst + cst + dst + est
                     calls.append(nstr)
     i = 0
-    while (i*args.num) < len(calls):
+    while (i*args.num_per_slurm) < len(calls):
         fn = 'rsci_d'+i
-        ca = calls[i*args.num,(i+1)*args.num]
+        ca = calls[i*args.num_per_slurm,(i+1)*args.num_per_slurm]
         num = len(ca)
         build_sci_files(fn, ca)
         build_slurm_file(num, fn)
