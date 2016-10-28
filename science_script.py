@@ -158,12 +158,6 @@ def parse_args(argv=None):
                         If this is not set, then it is calculated from the
                         science frame.''',
                         default=1.) 
-                        
-    parser.add_argument("--bias2_mult_val", type=float, 
-                        help='''Multiplication factor applied to dark masters.
-                        If this is not set, then it is calculated from the
-                        science frame.''',
-                        default=1.) 
 
     parser.add_argument("--cal_dir", nargs='?', type=str, 
                         help='''Calibration Directory [REQUIRED]''', 
@@ -734,11 +728,6 @@ def main():
                 nmasterbiasname = op.join(redux_dir, 
                                           op.basename(masterbiasname))
                 F.writeto(nmasterbiasname,clobber=True)
-                F = fits.open(masterbiasname)
-                F[0].data *= args.bias2_mult_val
-                F.writeto(op.join(redux_dir, 
-                             op.basename(masterbiasname)[:-5]+'_fordark.fits'),
-                          clobber=True)
                 cmd = CC.subtractbias(vframesselect, nmasterbiasname, amp, cmd, 
                                       run=args.run_insitu)
                 if args.use_darks:
@@ -748,7 +737,7 @@ def main():
                     masterdarknamenew = op.join(redux_dir, masterbasename)
 
                     hdu = fits.open(masterdarkname)
-                    hdu[0].data[:] = args.dark_mult_val*hdu[0].data - F[0].data
+                    hdu[0].data[:] = args.dark_mult_val*hdu[0].data
                     hdu.writeto(masterdarknamenew, clobber=True)
                     cmd = CC.subtractbias(vframesselect, masterdarknamenew, 
                                           amp, cmd, run=args.run_insitu)

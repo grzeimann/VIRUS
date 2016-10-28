@@ -189,22 +189,19 @@ def main():
     init_str = 'python science_script.py %s' %args.argstr
     dv = np.linspace(0.5,1.5,11)
     b1v = np.linspace(0.5,1.5,11)
-    b2v = np.linspace(0.5,1.5,11)
     calls = []
     for i in dv:
         for j in b1v:
-            for k in b2v:
-                dirn = 'd_%04.2f_b1_%04.2f_b2_%04.2f' %(i, j, k)
-                if not op.exists(dirn):
-                    os.mkdir(dirn)
-                for spec in args.specid:
-                    ast = ' --output %s/c%s' %(dirn, spec)
-                    bst = ' --specid %s' %spec
-                    cst = ' --dark_mult_val %0.2f' %i
-                    dst = ' --bias1_mult_val %0.2f' %j
-                    est = ' --bias2_mult_val %0.2f' %k
-                    nstr = init_str + ast + bst + cst + dst + est
-                    calls.append(nstr)
+            dirn = 'd_%04.2f_b1_%04.2f_b2_%04.2f' %(i, j)
+            if not op.exists(dirn):
+                os.mkdir(dirn)
+            for spec in args.specid:
+                ast = ' --output %s/c%s' %(dirn, spec)
+                bst = ' --specid %s' %spec
+                cst = ' --dark_mult_val %0.2f' %i
+                dst = ' --bias1_mult_val %0.2f' %j
+                nstr = init_str + ast + bst + cst + dst
+                calls.append(nstr)
     print(calls)
     i = 0
     while (i*args.num_per_slurm) < len(calls):
