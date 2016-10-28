@@ -192,7 +192,7 @@ def main():
     calls = []
     for i in dv:
         for j in b1v:
-            dirn = 'd_%04.2f_b1_%04.2f_b2_%04.2f' %(i, j)
+            dirn = 'd_%04.2f_b1_%04.2f' %(i, j)
             if not op.exists(dirn):
                 os.mkdir(dirn)
             for spec in args.specid:
