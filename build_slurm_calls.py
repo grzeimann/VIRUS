@@ -187,8 +187,8 @@ def build_sci_files(fn, calls):
 def main():
     args = parse_args()
     init_str = 'python science_script.py %s' %args.argstr
-    dv = np.linspace(0.5,1.5,11)
-    b1v = np.linspace(0.5,1.5,11)
+    dv = np.linspace(0.7,1.3,7)
+    b1v = np.linspace(-0.3,0.3,7)
     calls = []
     for i in dv:
         for j in b1v:
