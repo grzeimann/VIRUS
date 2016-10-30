@@ -159,6 +159,18 @@ def parse_args(argv=None):
                         science frame.''',
                         default=1.) 
 
+    parser.add_argument("--dark3_mult_val", type=float, 
+                        help='''Multiplication factor applied to dark masters.
+                        If this is not set, then it is calculated from the
+                        science frame.''',
+                        default=1.) 
+                        
+    parser.add_argument("--dark4_mult_val", type=float, 
+                        help='''Multiplication factor applied to dark masters.
+                        If this is not set, then it is calculated from the
+                        science frame.''',
+                        default=1.)                         
+
     parser.add_argument("--bias1_mult_val", type=float, 
                         help='''Multiplication factor applied to dark masters.
                         If this is not set, then it is calculated from the
@@ -743,11 +755,15 @@ def main():
                     masterdarknamenew = op.join(redux_dir, masterbasename)
 
                     hdu = fits.open(masterdarkname)
-                    if amp[1]=='L':
+                    if amp[1]=='LL':
                         hdu[0].data[:] = args.dark1_mult_val*hdu[0].data
-                    if amp[1]=='U':
+                    if amp[1]=='LU':
                         hdu[0].data[:] = args.dark2_mult_val*hdu[0].data
-                        
+                    if amp[1]=='RL':
+                        hdu[0].data[:] = args.dark3_mult_val*hdu[0].data
+                    if amp[1]=='RU':
+                        hdu[0].data[:] = args.dark4_mult_val*hdu[0].data 
+                       
                     hdu.writeto(masterdarknamenew, clobber=True)
                     cmd = CC.subtractbias(vframesselect, masterdarknamenew, 
                                           amp, cmd, run=args.run_insitu)
