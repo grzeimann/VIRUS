@@ -755,13 +755,13 @@ def main():
                     masterdarknamenew = op.join(redux_dir, masterbasename)
 
                     hdu = fits.open(masterdarkname)
-                    if amp[1]=='LL':
+                    if amp=='LL':
                         hdu[0].data[:] = args.dark1_mult_val*hdu[0].data
-                    if amp[1]=='LU':
+                    if amp=='LU':
                         hdu[0].data[:] = args.dark2_mult_val*hdu[0].data
-                    if amp[1]=='RL':
+                    if amp=='RL':
                         hdu[0].data[:] = args.dark3_mult_val*hdu[0].data
-                    if amp[1]=='RU':
+                    if amp=='RU':
                         hdu[0].data[:] = args.dark4_mult_val*hdu[0].data 
                        
                     hdu.writeto(masterdarknamenew, clobber=True)
