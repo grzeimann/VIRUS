@@ -220,7 +220,7 @@ def parse_args(argv=None):
     parser.add_argument("--skysubtract_options", nargs="?", type=str, 
                         help='''Set sky subtraction options.
                         Default: \"-J -w 250 --output-both\".''', 
-                        default="-J -w 250 --output-both")
+                        default="-J -w 250 -T 50 --output-both")
 
     parser.add_argument("--fiberextract_options", nargs="?", type=str, 
                         help='''Set fiber extract options.
