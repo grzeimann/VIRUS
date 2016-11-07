@@ -29,7 +29,7 @@ usemapping           = True # manual map IFUSLOT to SPECID
 CLEAN_AFTER_DONE     = True # clean the previous file after new one is created
 configdir    = "/work/03946/hetdex/maverick/virus_config"
 darkcurrentdir = "/work/00115/gebhardt/maverick/cal/lib_dark"
-biasdir = "/work/00115/gebhardt/maverick/cal/lib_bias"
+biasdir = "/work/00115/gebhardt/maverick/cal/lib_bias/20160512"
 
 
 # Critical naming scheme for folders and object types
@@ -124,28 +124,28 @@ def parse_args(argv=None):
                         type=str, default=None) 
                         
     parser.add_argument("-s","--subsky", help='''Subtract sky (no arg nec.)''',
-                        action="count", default=0)                        
+                        action="store_true")                        
 
     parser.add_argument("-rc","--remove_cosmics", help='''Make new error frame with cosmics set to "-1".''',
-                        action="count", default=0)  
+                        action="store_true")  
 
     parser.add_argument("-f","--fiberextract", 
                         help='''Fiberextract (no arg nec.)''',
-                        action="count", default=0) 
+                        action="store_true") 
 
     parser.add_argument("-m","--makecube", 
                         help='''Make 3d Cube (no arg nec.)''',
-                        action="count", default=0) 
+                        action="store_true") 
                         
     parser.add_argument("-d","--detect", 
                         help='''Run detect''',
-                        action="count", default=0) 
+                        action="store_true") 
 
     parser.add_argument("-t","--use_twi", help='''Use twi distortion soln.''',
-                        action="count", default=0) 
+                        action="store_true") 
 
     parser.add_argument("-ud","--use_darks", help='''Subtract dark masters.''',
-                        action="count", default=0) 
+                        action="store_true") 
 
     parser.add_argument("--dark1_mult_val", type=float, 
                         help='''Multiplication factor applied to dark masters.
@@ -184,11 +184,11 @@ def parse_args(argv=None):
     parser.add_argument("-dd","--use_deformer_default", 
                         help='''Use default deformer solutions in:
                         "/home/03946/hetdex/virus_config/DeformerDefaults"''',
-                        action="count", default=0) 
+                        action="store_true") 
 
     parser.add_argument("-rd","--rerun_deformer", 
                         help="Rerun Deformer with science frame",
-                        action="count", default=0) 
+                        action="store_true") 
 
     parser.add_argument("--instr", nargs='?', type=str, 
                         help='''Instrument to process. 
@@ -231,6 +231,11 @@ def parse_args(argv=None):
                         help='''Set makecube options.
                         Default: \"\".''', 
                         default="")
+ 
+    parser.add_argument("--detect_options", nargs="?", type=str, 
+                        help='''Set detect options.
+                        Default: \" -d -S 2 --psf-size 6,6 -c 2.5 -C 2.5 ".''', 
+                        default="-d -S 2 --psf-size 6,6 -c 2.5 -C 2.5 ")
                           
     args = parser.parse_args(args=argv)
 
@@ -365,6 +370,8 @@ class VirusFrame:
             self.orggain     = hdulist[0].header['GAIN']
             self.orgrdnoise  = hdulist[0].header['RDNOISE']
             self.exptime     = hdulist[0].header['EXPTIME']
+            self.dither = hdulist[0].header['DITHER'] 
+
                     
     def addbase(self, action, amp = None, side = None):
         s = []
@@ -940,6 +947,9 @@ def main():
                 ditherfile_fn = op.join(op.abspath(redux_dir), 
                                        "dither_{:s}_{:s}.txt".format(v.ifuslot, 
                                                                    v.basename))
+                dither_altname =  op.join(op.abspath(redux_dir), 
+                                       "dither{:d}.txt".format(v.dither))
+
                 print("Creating {:s}".format(ditherfile_fn))
                 ditherfile = open(ditherfile_fn, 'w')
                 ditherinfo.writeHeader(ditherfile)        
@@ -950,14 +960,20 @@ def main():
                                                         v.type))
                 modelbase = op.join(op.abspath(args.cal_dir), 
                                     "{:s}_{:s}".format(basetrace, v.specid))
-                if op.exists(modelbase+"_L.dist"): 
-                    if op.exists(modelbase+"_R.dist"):
-                        ditherinfo.writeDither(ditherfile, dither_fn, 
-                                               modelbase, 0.00, 0.00, 1.50,
-                                               1.00, 1.22) 
-                        cmd = CC.mkcube(IFUcen_file_fn, ditherfile_fn, 
-                                        args.makecube_options, cmd, 
-                                        run=args.run_insitu)  
+
+                if op.exists(modelbase+"_L.dist") and op.exists(modelbase+"_R.dist"):
+
+                    ditherinfo.writeDither(ditherfile, dither_fn, 
+                                           modelbase, 0.00, 0.00, 1.50,
+                                           1.00, 1.22) 
+
+                    # have a version of the filename that Karl likes
+                    print("Symlink dither file to {:s}".format(dither_altname))
+                    os.symlink(ditherfile_fn, dither_altname) 
+
+                    cmd = CC.mkcube(IFUcen_file_fn, ditherfile_fn, 
+                                    args.makecube_options, cmd, 
+                                    run=args.run_insitu)  
 
         # Run detect
         if args.detect:
@@ -970,25 +986,41 @@ def main():
                                              op.join(redux_dir, IFUcen_file)))            
             side = SPECBIG[0]
             for v in vframesselect:
-                output_fn = op.join(op.abspath(redux_dir), 
-                                       "detect_{:s}_{:s}".format(v.ifuslot, 
-                                                                   v.basename))
+                
+                #output_fn = op.join(op.abspath(redux_dir), 
+                #                       "detect_{:s}_{:s}".format(v.ifuslot, 
+                #                                                   v.basename))
+
+                output_fn = op.join(op.abspath(redux_dir), "d{:d}".format(v.dither))
+
                 ditherfile_fn = op.join(op.abspath(redux_dir), 
                                        "dither_{:s}_{:s}.txt".format(v.ifuslot, 
-                                                                   v.basename))
-                print("Creating {:s}".format(ditherfile_fn))
-                ditherfile = open(ditherfile_fn, 'w')
-                ditherinfo.writeHeader(ditherfile)        
-                dither_fn = op.join(op.abspath(redux_dir), sci_dir, 
-                                    "{:s}{:s}_{:s}_{:s}".format(
-                                                        v.actionbase[side], 
-                                                        v.basename, v.ifuslot, 
-                                                        v.type))
-                modelbase = op.join(op.abspath(args.cal_dir), 
-                                    "{:s}_{:s}".format(basetrace, v.specid))
-                if op.exists(modelbase+"_L.dist") and op.exists(modelbase+"_R.dist"):
-                    ditherinfo.writeDither(ditherfile, dither_fn, modelbase,
-                                           0.00, 0.00, 1.50, 1.00, 1.22) 
+                                                                     v.basename))
+                dither_altname =  op.join(op.abspath(redux_dir), 
+                                       "dither{:d}.txt".format(v.dither))
+
+                # only remake the dither file if it doesn't exist from mkcube
+                if not op.exists(ditherfile_fn):
+
+                    print("Creating {:s}".format(ditherfile_fn))
+                    ditherfile = open(ditherfile_fn, 'w')
+                    ditherinfo.writeHeader(ditherfile)        
+                    dither_fn = op.join(op.abspath(redux_dir), sci_dir, 
+                                        "{:s}{:s}_{:s}_{:s}".format(
+                                                            v.actionbase[side], 
+                                                            v.basename, v.ifuslot, 
+                                                            v.type))
+                    modelbase = op.join(op.abspath(args.cal_dir), 
+                                        "{:s}_{:s}".format(basetrace, v.specid))
+                    if op.exists(modelbase+"_L.dist") and op.exists(modelbase+"_R.dist"):
+                        ditherinfo.writeDither(ditherfile, dither_fn, modelbase,
+                                               0.00, 0.00, 1.50, 1.00, 1.22) 
+                        # have a version of the filename that Karl likes
+                        print("Symlink dither file to {:s}".format(dither_altname))
+                        os.symlink(ditherfile_fn, dither_altname) 
+
+   
+                if op.exists(ditherfile_fn):  
                     cmd = CC.detect(IFUcen_file_fn, ditherfile_fn, output_fn,
                                     args.detect_options, cmd, 
                                     run=args.run_insitu)  
