@@ -12,9 +12,10 @@ from astropy.io import fits
 import os.path as op
 import shutil
 import re
+import time
 from scipy.stats import sigmaclip
 from scipy.signal import medfilt2d
-from utils import imbox, biweight_location, biweight_midvariance
+from utils import biweight_location
 import numpy as np
 import datetime
     
@@ -68,7 +69,7 @@ class VirusFrame:
                 self.trimsec[amp] = [int(t)-((i+1)%2) for i,t in enumerate(trim)]
                 bias = re.split('[\[ \] \: \,]', hdulist[0].header['BIASSEC'])[1:-1]
                 self.biassec[amp] = [int(b)-((i+1)%2) for i,b in enumerate(bias)]                
-                self.fits[amp] = hdulist[0].data   
+                self.fits[amp] = np.array(hdulist[0].data, dtype=float)   
 
     def addbase(self, action, amp):
         self.currentbase[amp] = action + self.currentbase[amp] 
@@ -162,10 +163,10 @@ def addkeywordHeader(fits, keyword, value, comment=None):
 def subtractfits(frame, amp, image=None, value=None):
     
     if value is not None:
-        frame.fits[amp] -= value    
+        frame.fits[amp][:] = frame.fits[amp] - value    
     if image is not None:
         if frame.fits[amp].shape == image.data.shape:
-            frame.fits[amp] -= image.data
+            frame.fits[amp][:] = frame.fits[amp] - image.data
         else:
             print("[ERROR] Tried to subtract an image of size: %s\n"
                   "[ERROR] From an image of size: %s\n" %(image.shape, 
@@ -175,8 +176,7 @@ def overscansub(frames, amp):
     for f in frames:
         overscan_data = f.fits[amp][f.biassec[amp][2]:f.biassec[amp][3],
                                     f.biassec[amp][0]:f.biassec[amp][1]]
-        overscan_value = np.mean(sigmaclip(overscan_data.flatten(), low=3.5, 
-                                           high=3.5)[0])
+        overscan_value = biweight_location(overscan_data.flatten())
         print("Subtracting %0.3f from %s" %(overscan_value, 
                                             op.basename(f.indname[amp])))
         subtractfits(f, amp, value=overscan_value)
@@ -188,7 +188,7 @@ def meanfits(frames, amp):
                                      for f in frames])
     return biweight_location(bigarray, axis=(0,))   
     
-def biweight_filter_2d(image, width, adaptive=False, tol=0.001):
+def biweight_filter_2d(image, width):
     a,b = image.shape
     if len(width) > 1:
         xw = width[0]
@@ -197,7 +197,6 @@ def biweight_filter_2d(image, width, adaptive=False, tol=0.001):
         xw = width[0]
         yw = width[0]
     smooth = np.zeros(image.shape)
-    var = np.zeros(image.shape)
 
     for i in xrange(b):
         for j in xrange(a):
@@ -207,8 +206,7 @@ def biweight_filter_2d(image, width, adaptive=False, tol=0.001):
             yh = np.min([a-1,j+yw])
             loc = (j-yl) * (xh+1-xl) + (i-xl)
             smooth[j,i] = biweight_location(np.delete(image[yl:yh+1,xl:xh+1],(loc)))
-            var[j,i] = biweight_midvariance(np.delete(image[yl:yh+1,xl:xh+1],(loc)))
-    return smooth, var
+    return smooth
     
     
 def writefits(fitsfile, args, outfile):
@@ -281,18 +279,24 @@ def main():
     for sp in SPEC:
         overscansub(fframe, sp)
         overscansub(dframe, sp)
-        meanflat = meanfits(fframe, sp)
+        for d in dframe:
+            t1 = time.time()
+            d.fits[sp][:] = medfilt2d(d.fits[sp],(11,11))
+            t2 = time.time()
+            print("Time Taken smoothing darks: %0.2f" %(t2-t1))
         meandark = meanfits(dframe, sp)
-        #[subtractfits(frame, sp, image=meandark) for frame in fframe]
-        flat_minus_dark = meanflat - meandark
-        smooth = medfilt2d(flat_minus_dark,(1,args.smoothx))
-        smooth = medfilt2d(smooth,(args.smoothy,1))
-        pixelflat = flat_minus_dark / smooth
+        writefits(meandark, args,  op.join(newdir,'meandark_%s.fits' %(sp)))
+        for f in fframe:
+            t1 = time.time()
+            subtractfits(f, sp, image=meandark)
+            f.fits[sp][:] = f.fits[sp] / medfilt2d(f.fits[sp],(args.smoothy,1))
+            f.fits[sp][:] = f.fits[sp] / medfilt2d(f.fits[sp],(1,args.smoothx))
+            t2 = time.time()
+            print("Time Taken smoothing flats: %0.2f" %(t2-t1))            
+        pixelflat = meanfits(fframe, sp)
+
         if args.binning:
             pixelflat_amp[sp] = pixelflat[:,0::2]/2. + pixelflat[:,1::2]/2.
-            writefits(smooth, args, op.join(newdir,'smooth_%s.fits' %(sp)))
-            writefits(flat_minus_dark, args, 
-                      op.join(newdir,'amp_%s.fits' %(sp)))
         else:
             pixelflat_amp[sp] = pixelflat
     
