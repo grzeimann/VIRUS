@@ -6,6 +6,7 @@ A variety of scripts that are useful for VIRUS IFU spectroscopic reductions and 
 
 * Greg Zeimann, UT Austin
 * Karl Gebhardt, UT Austin
+* Daniel Farrow, MPE Garching
 
 ### Description
 
