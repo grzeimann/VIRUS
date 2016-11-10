@@ -21,16 +21,15 @@ import call_cure as CC
 import textwrap
 import numpy as np
 import warnings
+import six
 from virus_cosmics import remove_cosmics
 
 
 '''Global variables to be set for a given reduction'''
-usemapping           = True # manual map IFUSLOT to SPECID 
+usemapping           = False # manual map IFUSLOT to SPECID 
 CLEAN_AFTER_DONE     = True # clean the previous file after new one is created
 configdir    = "/work/03946/hetdex/maverick/virus_config"
 darkcurrentdir = "/work/00115/gebhardt/maverick/cal/lib_dark"
-biasdir = "/work/00115/gebhardt/maverick/cal/lib_bias/20160512"
-
 
 # Critical naming scheme for folders and object types
 # Note the type doesn't have to initial match the folder because
@@ -38,6 +37,7 @@ biasdir = "/work/00115/gebhardt/maverick/cal/lib_bias/20160512"
 sci_dir  = "sci"
 
 # Dictionary of the mapping between IFUSLOT and SPECID, IFUID
+# only used if usemapping = True
 IFUSLOT_DICT = {'073':['024','033'],
                 '074':['037','024'],
                 '075':['027','001'],
@@ -56,27 +56,17 @@ IFUSLOT_DICT = {'073':['024','033'],
                 '106':['017','022'],}
 
 # Dictionary of the mapping between SPECID and IFUID
+CAM_IFU_DICT = {}
+# if not usemapping, this array is filled in by reading the header in initial_setup
+if usemapping:
+    for sid, iid in six.itervalues(IFUSLOT_DICT):
+        CAM_IFU_DICT[sid] = iid
 
-CAM_IFU_DICT = {'004':'051',
-                '037':'024',
-                '027':'001',                
-                '047':'016',
-                '024':'033',
-                '013':'019',
-                '016':'026',
-                '041':'015',
-                '051':'023',
-                '008':'054',
-                '025':'020',
-                '038':'014',
-                '020':'004',
-                '032':'028',
-                '012':'055',
-                '017':'022',}
 
 # Default set of spectrographs for reduction
-SPECID = ["004","008","012","013","016","017","020","024","025","027","032",
-          "037","038","041","047","051"]
+# Not used as far as I can tell
+# SPECID = ["004","008","012","013","016","017","020","024","025","027","032",
+#          "037","038","041","047","051"]
 
 SPEC = ["LL","LU","RL","RU"]
 SPECBIG = ["L","R"]  
@@ -190,6 +180,10 @@ def parse_args(argv=None):
                         help="Rerun Deformer with science frame",
                         action="store_true") 
 
+    parser.add_argument("-rmd","--remake_ditherfiles", 
+                        help="Remake the dither files (if they already exist)",
+                        action="store_true") 
+
     parser.add_argument("--instr", nargs='?', type=str, 
                         help='''Instrument to process. 
                         Default: "virus"
@@ -199,6 +193,10 @@ def parse_args(argv=None):
                         help='''Root Directory
                         Default: \"/work/03946/hetdex/maverick\"''', 
                         default="/work/03946/hetdex/maverick")
+
+    parser.add_argument("--biasdir", type=str,
+                        help= "Directory of biases to use",
+                        default="/work/00115/gebhardt/maverick/cal/lib_bias")
                         
     parser.add_argument("-sd","--scidir_date", nargs='?', type=str,
                         help='''Science Directory Date.     [REQUIRED]
@@ -362,8 +360,8 @@ class VirusFrame:
                 self.ifuid = IFUSLOT_DICT[self.ifuslot][1]
 
             else:
-                self.specid = hdulist[0].header['SPECID']
-                self.ifuid = hdulist[0].header['IFUID']
+                self.specid = "{:03d}".format(int(hdulist[0].header['SPECID']))
+                self.ifuid = "{:03d}".format(int(hdulist[0].header['IFUID']))
 
                 
             self.object      = hdulist[0].header['OBJECT']
@@ -480,7 +478,7 @@ class ditherinfo(object):
         f.flush()
 
 def initial_setup(initial_base=None, file_loc_dir=None, redux_dir=None, 
-                  DIR_DICT=None, uifuslot=None):
+                  DIR_DICT=None, uspecid=None):
     '''
     Running the initial setup which includes:
     1) Building a standard reduction folder structure
@@ -510,10 +508,18 @@ def initial_setup(initial_base=None, file_loc_dir=None, redux_dir=None,
         print("Please provide a directory dictionary \"DIR_DICT\".")
         return None
 
-    if uifuslot is None:        
-        print("Please provide a IFUSLOT IDs for reduction (nested complaint).")
+    if uspecid is None:        
+        print("Please provide SPECIDs for reduction (nested complaint).")
         return None
-    
+
+    if usemapping:
+        # convert uspecid to uifuslot
+        uifuslot = []   
+        for ifuslot, values in six.iteritems(IFUSLOT_DICT):
+            specid = values[0]
+            if specid in uspecid:    
+                uifuslot.append(ifuslot)
+
     '''Loop through the input directories and link files to the new structure.
        Create a VirusFrame class for each frame that can maintain info for 
        each original frame. The VirusFrame is critical for the rest of the 
@@ -539,27 +545,42 @@ def initial_setup(initial_base=None, file_loc_dir=None, redux_dir=None,
                         print("No files found for wildcard search: %s" 
                                         %(op.join(file_loc, "*/*/*.fits")))
                         return None
+
+                ingest = []
                 for f in filenames:
+
                     temp, temp1, temp2 = op.basename(f).split('_')
+
+                    if usemapping:
+                        usefile = temp1[0:3] in uifuslot
+                    else:
+                        header = fits.getheader(f)
+                        specid = "{:03d}".format(int(header['SPECID']))
+                        usefile = specid in uspecid
+
+                        print(header['SPECID'], f, usefile)
+                        CAM_IFU_DICT[specid] = "{:03d}".format(int(header['IFUID']))
+
                     newname = temp+'_'+temp1+'_'+DIR_DICT[i]+'.fits'
                     test = op.exists(op.join(redux_dir, DIR_DICT[i], 
                                              newname))
                     if not test:
-                        if temp1[0:3] in uifuslot:
+                        if usefile:
                             os.symlink(f, op.join(redux_dir, DIR_DICT[i], 
                                                   newname))
-                for f in filenames:
-                    temp, temp1, temp2 = op.basename(f).split('_')
+
                     amp = temp1[-2:]
-                    newname = temp+'_'+temp1+'_'+DIR_DICT[i]+'.fits'
-                    if amp == "LL":
-                        if temp1[0:3] in uifuslot:
-                            vframes.append(VirusFrame(initial_base,
-                                                      op.join(redux_dir, 
-                                                              DIR_DICT[i],
-                                                              newname),
-                                                              DIR_DICT[i]))
-    
+                    if amp == "LL" and usefile:
+                        ingest.append(newname)
+
+                for newname in ingest:
+                    
+                    vframes.append(VirusFrame(initial_base,
+                                              op.join(redux_dir, 
+                                                      DIR_DICT[i],
+                                                      newname),
+                                                      DIR_DICT[i]))
+   
     return vframes          
                 
 def clean_folder(frames, cmd, side=None, amp=None):
@@ -698,16 +719,15 @@ def main():
     # Set up VirusFrame objects for each file
     # Unique camera id's (aka SPECID)
     uifuslot = []
+
     ucam = args.specid
-    for ifuslot, values in IFUSLOT_DICT.items():
-        specid = values[0]
-        if specid in ucam:    
-            uifuslot.append(ifuslot)
+
+    # pass ucam to initial_setup and deal with it there
     if args.skipbasic:
         vframes = initial_setup(args.skipbasic, file_loc_dir, redux_dir, 
-                                DIR_DICT,uifuslot)
+                                DIR_DICT,ucam)
     else:
-        vframes = initial_setup('', file_loc_dir, redux_dir, DIR_DICT,uifuslot)
+        vframes = initial_setup('', file_loc_dir, redux_dir, DIR_DICT,ucam)
 
     # Pooling the different frames for different purposes
     vframes = [v for v in vframes for uca in ucam if v.specid == uca]
@@ -742,7 +762,7 @@ def main():
                                      run=args.run_insitu)
     
                 # Subtract Master Bias
-                masterbiasname = op.join(biasdir, 'masterbias' 
+                masterbiasname = op.join(args.biasdir, 'masterbias' 
                                                     + '_' 
                                                     + uca 
                                                     + '_' 
@@ -932,74 +952,22 @@ def main():
                                           run=args.run_insitu, 
                                           new_deformer=args.rerun_deformer,
                                           cal_folder=args.output)
-        
-        # Run mkcube
-        if args.makecube:
-            IFUcen_dir = op.join(configdir, 'IFUcen_files')
-            IFUcen_file = 'IFUcen_VIFU{:s}.txt'.format(CAM_IFU_DICT[uca])
-            IFUcen_file_fn = op.join(IFUcen_dir, IFUcen_file)
-            shutil.copy(op.join(IFUcen_dir, IFUcen_file), 
-                        op.join(redux_dir, IFUcen_file))
-            cmd.append('cp {:s} {:s}'.format(op.join(IFUcen_dir, IFUcen_file), 
-                                             op.join(redux_dir, IFUcen_file)))            
-            side = SPECBIG[0]
-            for v in vframesselect:
-                ditherfile_fn = op.join(op.abspath(redux_dir), 
-                                       "dither_{:s}_{:s}.txt".format(v.ifuslot, 
-                                                                   v.basename))
-                dither_altname =  op.join(op.abspath(redux_dir), 
-                                       "dither{:d}.txt".format(v.dither))
+ 
+        # make dither files if needed       
+        if args.makecube or args.detect:
 
-                print("Creating {:s}".format(ditherfile_fn))
-                ditherfile = open(ditherfile_fn, 'w')
-                ditherinfo.writeHeader(ditherfile)        
-                dither_fn = op.join(op.abspath(redux_dir), sci_dir, 
-                                    "{:s}{:s}_{:s}_{:s}".format(
-                                                        v.actionbase[side], 
-                                                        v.basename, v.ifuslot, 
-                                                        v.type))
-                modelbase = op.join(op.abspath(args.cal_dir), 
-                                    "{:s}_{:s}".format(basetrace, v.specid))
+           side = SPECBIG[0]
 
-                if op.exists(modelbase+"_L.dist") and op.exists(modelbase+"_R.dist"):
-
-                    ditherinfo.writeDither(ditherfile, dither_fn, 
-                                           modelbase, 0.00, 0.00, 1.50,
-                                           1.00, 1.22) 
-
-                    # have a version of the filename that Karl likes
-                    print("Symlink dither file to {:s}".format(dither_altname))
-                    os.symlink(ditherfile_fn, dither_altname) 
-
-                    cmd = CC.mkcube(IFUcen_file_fn, ditherfile_fn, 
-                                    args.makecube_options, cmd, 
-                                    run=args.run_insitu)  
-
-        # Run detect
-        if args.detect:
-            IFUcen_dir = op.join(configdir, 'IFUcen_files')
-            IFUcen_file = 'IFUcen_VIFU{:s}.txt'.format(CAM_IFU_DICT[uca])
-            IFUcen_file_fn = op.join(IFUcen_dir, IFUcen_file)
-            shutil.copy(op.join(IFUcen_dir, IFUcen_file), 
-                        op.join(redux_dir, IFUcen_file))
-            cmd.append('cp {:s} {:s}'.format(op.join(IFUcen_dir, IFUcen_file), 
-                                             op.join(redux_dir, IFUcen_file)))            
-            side = SPECBIG[0]
-            for v in vframesselect:
-                
-                #output_fn = op.join(op.abspath(redux_dir), 
-                #                       "detect_{:s}_{:s}".format(v.ifuslot, 
-                #                                                   v.basename))
-
-                output_fn = op.join(op.abspath(redux_dir), "d{:d}".format(v.dither))
+           for v in vframesselect:
 
                 ditherfile_fn = op.join(op.abspath(redux_dir), 
-                                       "dither_{:s}_{:s}.txt".format(v.ifuslot, 
-                                                                     v.basename))
-                dither_altname =  op.join(op.abspath(redux_dir), 
-                                       "dither{:d}.txt".format(v.dither))
+                                       "dither_{:s}_{:s}_d{:d}.txt".format(v.ifuslot, 
+                                                                   v.basename, v.dither))
 
-                # only remake the dither file if it doesn't exist from mkcube
+                if args.remake_ditherfiles and op.exists(ditherfile_fn):
+                    print("Removing old dither file {:s}".format(ditherfile_fn))
+                    os.remove(ditherfile_fn)
+                    
                 if not op.exists(ditherfile_fn):
 
                     print("Creating {:s}".format(ditherfile_fn))
@@ -1012,19 +980,71 @@ def main():
                                                             v.type))
                     modelbase = op.join(op.abspath(args.cal_dir), 
                                         "{:s}_{:s}".format(basetrace, v.specid))
-                    if op.exists(modelbase+"_L.dist") and op.exists(modelbase+"_R.dist"):
-                        ditherinfo.writeDither(ditherfile, dither_fn, modelbase,
-                                               0.00, 0.00, 1.50, 1.00, 1.22) 
-                        # have a version of the filename that Karl likes
-                        print("Symlink dither file to {:s}".format(dither_altname))
-                        os.symlink(ditherfile_fn, dither_altname) 
 
+
+                    ditherinfo.writeDither(ditherfile, dither_fn, 
+                                           modelbase, 0.00, 0.00, 1.50,
+                                           1.00, 1.22) 
+
+
+
+        # Run mkcube
+        if args.makecube:
+            IFUcen_dir = op.join(configdir, 'IFUcen_files')
+            IFUcen_file = 'IFUcen_VIFU{:s}.txt'.format(CAM_IFU_DICT[uca])
+            IFUcen_file_fn = op.join(IFUcen_dir, IFUcen_file)
+            shutil.copy(op.join(IFUcen_dir, IFUcen_file), 
+                        op.join(redux_dir, IFUcen_file))
+            cmd.append('cp {:s} {:s}'.format(op.join(IFUcen_dir, IFUcen_file), 
+                                             op.join(redux_dir, IFUcen_file)))            
+            for v in vframesselect:
+                ditherfile_fn = op.join(op.abspath(redux_dir), 
+                                       "dither_{:s}_{:s}_d{:d}.txt".format(v.ifuslot, 
+                                                                   v.basename, v.dither))
+
+                modelbase = op.join(op.abspath(args.cal_dir), 
+                                        "{:s}_{:s}".format(basetrace, v.specid))
+
+
+
+                if (op.exists(ditherfile_fn) and op.exists(modelbase+"_L.dist") 
+                    and op.exists(modelbase+"_R.dist")):
+
+                    cmd = CC.mkcube(IFUcen_file_fn, ditherfile_fn, 
+                                    args.makecube_options, cmd, 
+                                    run=args.run_insitu)  
+                else:
+                    print("Error: Missing files needed for make cube")
+
+        # Run detect
+        if args.detect:
+            IFUcen_dir = op.join(configdir, 'IFUcen_files')
+            IFUcen_file = 'IFUcen_VIFU{:s}.txt'.format(CAM_IFU_DICT[uca])
+            IFUcen_file_fn = op.join(IFUcen_dir, IFUcen_file)
+            shutil.copy(op.join(IFUcen_dir, IFUcen_file), 
+                        op.join(redux_dir, IFUcen_file))
+            cmd.append('cp {:s} {:s}'.format(op.join(IFUcen_dir, IFUcen_file), 
+                                             op.join(redux_dir, IFUcen_file)))            
+            for v in vframesselect:
+
+                modelbase = op.join(op.abspath(args.cal_dir), 
+                                        "{:s}_{:s}".format(basetrace, v.specid))
+
+                output_fn = op.join(op.abspath(redux_dir), "d{:d}_{:s}".format(v.dither, v.basename))
+
+                ditherfile_fn = op.join(op.abspath(redux_dir), 
+                                       "dither_{:s}_{:s}_d{:d}.txt".format(v.ifuslot, 
+                                                                     v.basename, v.dither))
+                if (op.exists(ditherfile_fn) and op.exists(modelbase+"_L.dist") 
+                    and op.exists(modelbase+"_R.dist")):
    
-                if op.exists(ditherfile_fn):  
                     cmd = CC.detect(IFUcen_file_fn, ditherfile_fn, output_fn,
                                     args.detect_options, cmd, 
                                     run=args.run_insitu)  
-            
+                else:
+                    print("Error: Missing files needed for detect")
+
+           
         cmd = flatten(cmd,[])                             
         commandinfo.writecommand(commandfile[-1],cmd)
         commandfile[-1].close()
