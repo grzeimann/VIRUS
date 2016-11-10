@@ -568,7 +568,6 @@ def initial_setup(initial_base=None, file_loc_dir=None, redux_dir=None,
                         if usefile:
                             os.symlink(f, op.join(redux_dir, DIR_DICT[i], 
                                                   newname))
-                            print(f, newname)        
 
                     amp = temp1[-2:]
                     if amp == "LL" and usefile:
@@ -1019,7 +1018,6 @@ def main():
 
         # Run detect
         if args.detect:
-            print("HELLO")
             IFUcen_dir = op.join(configdir, 'IFUcen_files')
             IFUcen_file = 'IFUcen_VIFU{:s}.txt'.format(CAM_IFU_DICT[uca])
             IFUcen_file_fn = op.join(IFUcen_dir, IFUcen_file)
