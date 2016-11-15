@@ -13,11 +13,11 @@ import os.path as op
 import shutil
 import re
 import time
-from scipy.stats import sigmaclip
 from scipy.signal import medfilt2d
 from utils import biweight_location
 import numpy as np
 import datetime
+from progressbar import ProgressBar
     
 SPEC    = [ "LL", "LU", "RL", "RU" ]
 SPECBIG = [ "L", "R" ]
@@ -165,8 +165,8 @@ def subtractfits(frame, amp, image=None, value=None):
     if value is not None:
         frame.fits[amp][:] = frame.fits[amp] - value    
     if image is not None:
-        if frame.fits[amp].shape == image.data.shape:
-            frame.fits[amp][:] = frame.fits[amp] - image.data
+        if frame.fits[amp].shape == image.shape:
+            frame.fits[amp][:] = frame.fits[amp] - image
         else:
             print("[ERROR] Tried to subtract an image of size: %s\n"
                   "[ERROR] From an image of size: %s\n" %(image.shape, 
@@ -177,15 +177,17 @@ def overscansub(frames, amp):
         overscan_data = f.fits[amp][f.biassec[amp][2]:f.biassec[amp][3],
                                     f.biassec[amp][0]:f.biassec[amp][1]]
         overscan_value = biweight_location(overscan_data.flatten())
-        print("Subtracting %0.3f from %s" %(overscan_value, 
-                                            op.basename(f.indname[amp])))
+        #print("Subtracting %0.3f from %s" %(overscan_value, 
+        #                                    op.basename(f.indname[amp])))
         subtractfits(f, amp, value=overscan_value)
         
+def trimfits(frames, amp):
+    for f in frames:  
+        f.fits[amp] = f.fits[amp][f.trimsec[amp][2]:f.trimsec[amp][3],
+                                     f.trimsec[amp][0]:f.trimsec[amp][1]]
         
 def meanfits(frames, amp):
-    bigarray = np.array([f.fits[amp][f.trimsec[amp][2]:f.trimsec[amp][3],
-                                     f.trimsec[amp][0]:f.trimsec[amp][1]] 
-                                     for f in frames])
+    bigarray = np.array([f.fits[amp] for f in frames])
     return biweight_location(bigarray, axis=(0,))   
     
 def biweight_filter_2d(image, width):
@@ -279,34 +281,40 @@ def main():
     for sp in SPEC:
         overscansub(fframe, sp)
         overscansub(dframe, sp)
+        trimfits(fframe, sp)
+        trimfits(dframe, sp)
+        progress = ProgressBar(len(dframe), 'Dark %s' %sp, fmt=ProgressBar.FULL)
         for d in dframe:
-            t1 = time.time()
             d.fits[sp][:] = medfilt2d(d.fits[sp],(11,11))
-            t2 = time.time()
-            print("Time Taken smoothing darks: %0.2f" %(t2-t1))
+            progress.current+=1
+            progress()
+        progress.done()
         meandark = meanfits(dframe, sp)
+        meandark[np.isnan(meandark)] = 0.0
         writefits(meandark, args,  op.join(newdir,'meandark_%s.fits' %(sp)))
+        progress = ProgressBar(len(dframe), 'Flat %s' %sp, fmt=ProgressBar.FULL)
         for f in fframe:
-            t1 = time.time()
             subtractfits(f, sp, image=meandark)
-            f.fits[sp][:] = f.fits[sp] / medfilt2d(f.fits[sp],(args.smoothy,1))
-            f.fits[sp][:] = f.fits[sp] / medfilt2d(f.fits[sp],(1,args.smoothx))
-            t2 = time.time()
-            print("Time Taken smoothing flats: %0.2f" %(t2-t1))            
+            f.fits[sp][:] = np.divide(f.fits[sp], 
+                                      medfilt2d(f.fits[sp],(args.smoothy,1)))
+            f.fits[sp][:] = np.divide(f.fits[sp],
+                                      medfilt2d(f.fits[sp],(1,args.smoothx)))
+            progress.current+=1
+            progress()
+        progress.done()
         pixelflat = meanfits(fframe, sp)
-
+        name = "pixelflat_cam%03d_%s.fits" %(args.camra, sp)
+        writefits(np.array(pixelflat), args, op.join(newdir, name))
         if args.binning:
             pixelflat_amp[sp] = pixelflat[:,0::2]/2. + pixelflat[:,1::2]/2.
         else:
             pixelflat_amp[sp] = pixelflat
     
-    a,b = pixelflat_amp[SPEC[0]].shape
-    pixelflat_L = np.zeros((2*a,b))
-    pixelflat_R = np.zeros((2*a,b))
-    for sp in SPEC:
-        name = "pixelflat_cam%03d_%s.fits" %(args.camra, sp)
-        writefits(np.array(pixelflat_amp[sp]), args, op.join(newdir, name))
+
     if args.join:
+        a,b = pixelflat_amp[SPEC[0]].shape
+        pixelflat_L = np.zeros((2*a,b))
+        pixelflat_R = np.zeros((2*a,b))
         if args.newlab:
             pixelflat_L[:a,:] = pixelflat_amp["LL"]
             pixelflat_L[a:,:] = pixelflat_amp["LU"][::-1,::-1] # Flip x and y
