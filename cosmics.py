@@ -1,4 +1,7 @@
 """
+
+This is a direct copy of Malte Tewes and Pieter Van Dokkum's cosmics.py.  See below for details.
+
 About
 =====
 
