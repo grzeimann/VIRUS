@@ -3,6 +3,12 @@
 Created on Wed Oct  5 18:12:13 2016
 
 @author: gregz
+
+This code relies on original software from:
+Copyright (c) 2011-2016, Astropy Developers    
+Copyright (c) 2012, Free Software Foundation    
+
+
 """
 
 import numpy as np
@@ -11,7 +17,9 @@ from bspline import Bspline
 import sys
 
 def median_absolute_deviation(a, axis=None):
-    """Compute the median absolute deviation.
+    """
+    Copyright (c) 2011-2016, Astropy Developers    
+    Compute the median absolute deviation.
 
     Returns the median absolute deviation (MAD) of the array elements.
     The MAD is defined as ``median(abs(a - median(a)))``.
@@ -76,7 +84,9 @@ def median_absolute_deviation(a, axis=None):
     
 
 def biweight_location(a, c=6.0, M=None, axis=None):
-    """Compute the biweight location for an array.
+    """
+    Copyright (c) 2011-2016, Astropy Developers    
+    Compute the biweight location for an array.
 
     Returns the biweight location for the array elements.
     The biweight is a robust statistic for determining the central
@@ -168,7 +178,10 @@ def biweight_location(a, c=6.0, M=None, axis=None):
     
     
 def biweight_midvariance(a, c=9.0, M=None, axis=None):
-    """Compute the biweight midvariance for an array.
+    """
+    Copyright (c) 2011-2016, Astropy Developers
+    
+    Compute the biweight midvariance for an array.
 
     Returns the biweight midvariance for the array elements.
     The biweight midvariance is a robust statistic for determining
@@ -277,6 +290,8 @@ def biweight_midvariance(a, c=9.0, M=None, axis=None):
     
 def is_outlier(points, thresh=3.5):
     """
+    Copyright (c) 2012, Free Software Foundation    
+
     Returns a boolean array with True if points are outliers and False 
     otherwise.
 
