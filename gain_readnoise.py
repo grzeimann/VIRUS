@@ -39,7 +39,7 @@ IFUSLOT_DICT = {'093':['004','023'],
                 '104':['032','028'],
                 #'105':['012','055'],
                 '106':['017','022'],
-                '999':['012','999']} 
+                '999':['999','999']} 
 
 class Fibers:
     def __init__(self, N, D, order = 3):
@@ -447,11 +447,11 @@ def main():
                         + bias[1::2,1::2])
             bigbias[:,:,i] = bias
         rdnoiseimage = biweight_midvariance(bigbias, axis=(2,) )
-        biasimage = biweight_location(bigbias, axis=(2,) )
-        p[0].data = np.array(rdnoiseimage)
-        p.writeto('../masterbias/rdnoise_image_%s.fits' %sp,clobber=True)
-        p[0].data = np.array(biasimage)
-        p.writeto('../masterbias/bias_image_%s.fits' %sp,clobber=True)
+        #biasimage = biweight_location(bigbias, axis=(2,) )
+        #p[0].data = np.array(rdnoiseimage)
+        #p.writeto('../masterbias/rdnoise_image_%s.fits' %sp,clobber=True)
+        #p[0].data = np.array(biasimage)
+        #p.writeto('../masterbias/bias_image_%s.fits' %sp,clobber=True)
 #        avgbiasimage     = biweight_location(bigbias, axis=(2,) )
         readnoiseavg[sp] = biweight_location(rdnoiseimage)
         
