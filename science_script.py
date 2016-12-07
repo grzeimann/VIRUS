@@ -30,6 +30,7 @@ usemapping           = False # manual map IFUSLOT to SPECID
 CLEAN_AFTER_DONE     = True # clean the previous file after new one is created
 configdir    = "/work/03946/hetdex/maverick/virus_config"
 darkcurrentdir = "/work/00115/gebhardt/maverick/cal/lib_dark"
+fplanedir = "/work/03946/hetdex/maverick/virus_config/fplane"
 
 # Critical naming scheme for folders and object types
 # Note the type doesn't have to initial match the folder because
@@ -38,22 +39,26 @@ sci_dir  = "sci"
 
 # Dictionary of the mapping between IFUSLOT and SPECID, IFUID
 # only used if usemapping = True
-IFUSLOT_DICT = {'073':['024','033'],
-                '074':['037','024'],
-                '075':['027','001'],
-                '076':['047','016'],
-                '083':['051','023'],
-                '084':['013','019'],
-                '085':['016','026'],
-                '086':['041','015'],
-                '093':['004','051'],
-                '094':['008','054'],
-                '095':['025','020'],
-                '096':['038','014'],
-                '103':['020','004'],
-                '104':['032','028'],
-                '105':['012','055'],
-                '106':['017','022'],}
+
+IFUSLOT_DICT = {}
+
+if usemapping:
+    IFUSLOT_DICT = {'073':['024','033'],
+                    '074':['037','024'],
+                    '075':['027','001'],
+                    '076':['047','016'],
+                    '083':['051','023'],
+                    '084':['013','019'],
+                    '085':['016','026'],
+                    '086':['041','015'],
+                    '093':['004','051'],
+                    '094':['008','054'],
+                    '095':['025','020'],
+                    '096':['038','014'],
+                    '103':['020','004'],
+                    '104':['032','028'],
+                    '105':['012','055'],
+                    '106':['017','022'],}
 
 # Dictionary of the mapping between SPECID and IFUID
 CAM_IFU_DICT = {}
@@ -70,6 +75,77 @@ if usemapping:
 
 SPEC = ["LL","LU","RL","RU"]
 SPECBIG = ["L","R"]  
+
+
+
+def find_fplane(date): #date as yyyymmdd string
+    """Locate the fplane file to use based on the observation date
+
+        Parameters
+        ----------
+            date : string
+                observation date as YYYYMMDD
+
+        Returns
+        -------
+            fully qualified filename of fplane file
+    """
+    #todo: check date
+
+    filepath = fplanedir
+    if filepath[-1] != "/":
+        filepath += "/"
+    files = glob.glob(filepath + "fplane*.txt")
+
+    if len(files) > 0:
+        target_file = filepath + "fplane" + date + ".txt"
+
+        if target_file in files: #exact match for date, use this one
+            fplane = target_file
+        else:                   #find nearest earlier date
+            files.append(target_file)
+            files = sorted(files)
+            #sanity check the index
+            i = files.index(target_file)-1
+            if i < 0: #there is no valid fplane
+                print("Warning! No valid fplane file found for the given date. Will use oldest available.")
+                i = 0
+            fplane = files[i]
+    else:
+        print ("Error. No fplane files found.")
+
+    return fplane
+
+def build_fplane_dicts(fqfn):
+    """Build the dictionaries maping IFUSLOTID, SPECID and IFUID
+
+        Parameters
+        ----------
+        fqfn : string
+            fully qualified file name of the fplane file to use
+
+        Returns
+        -------
+            ifuslotid to specid, ifuid dictionary
+            specid to ifuid dictionary
+        """
+    # IFUSLOT X_FP   Y_FP   SPECID SPECSLOT IFUID IFUROT PLATESC
+    if fqgn is None:
+        print("Error! Cannot build fplane dictionaries. No fplane file.")
+        return {},{}
+
+    ifuslot, specid, ifuid = np.loadtxt(fqfn, comments='#', usecols=(0, 3, 5), dtype = int, unpack=True)
+    ifuslot_dict = {}
+    cam_ifu_dict = {}
+
+    for i in range(len(ifuslot)):
+        if (ifuid[i] < 900) and (specid[i] < 900):
+            ifuslot_dict[str("%03d" % ifuslot[i])] = [str("%03d" % specid[i]),str("%03d" % ifuid[i])]
+            cam_ifu_dict[str("%03d" % specid[i])] = str("%03d" % ifuid[i])
+
+    return ifuslot_dict, cam_ifu_dict
+
+
 
 def parse_args(argv=None):
     """Parse the command line arguments
@@ -130,6 +206,10 @@ def parse_args(argv=None):
     parser.add_argument("-d","--detect", 
                         help='''Run detect''',
                         action="store_true") 
+
+    parser.add_argument("--detect_cont",
+                        help='''Run detect for continuum sources on single dithers.''',
+                        action="count", default=0)
 
     parser.add_argument("-t","--use_twi", help='''Use twi distortion soln.''',
                         action="store_true") 
@@ -217,8 +297,8 @@ def parse_args(argv=None):
  
     parser.add_argument("--skysubtract_options", nargs="?", type=str, 
                         help='''Set sky subtraction options.
-                        Default: \"-J -w 250 --output-both\".''', 
-                        default="-J -w 250 -T 50 --output-both")
+                        Default: \"-J -w 250 -T 50.0 --output-both\".''',
+                        default="-J -w 250 -T 50.0 --output-both")
 
     parser.add_argument("--fiberextract_options", nargs="?", type=str, 
                         help='''Set fiber extract options.
@@ -713,6 +793,17 @@ def main():
     args = parse_args()
     # Reduction Directory
     redux_dir = args.output
+    #IFU Dictionaries
+    if not usemapping:
+        #todo: build dictionaries for each scidir_date
+        #scidir_date is a list of dates, so should build dictionaries for each date, as needed. Current implementation
+        #effectively restricts the dates to be compatible with a single fplane file, so this is equivalent
+        IFUSLOT_DICT, CAM_IFU_DICT = build_fplane_dicts(find_fplane(args.scidir_date[0]))
+        if (len(IFUSLOT_DICT) == 0) or (len(CAM_IFU_DICT) == 0):
+            print ("Fatal Error! No fplane dictionaries. Cannot continue.")
+            exit(-1)
+
+
     # file directories
     file_loc_dir = [args.sci_file_loc] # Keep same order with dir_dict
     DIR_DICT = {0:sci_dir} # Dictionary for looping through directory names
@@ -1015,6 +1106,46 @@ def main():
                                     run=args.run_insitu)  
                 else:
                     print("Error: Missing files needed for make cube")
+
+        # Run detect continuum
+        if args.detect_cont:
+            IFUcen_dir = op.join(configdir, 'IFUcen_files')
+            IFUcen_file = 'IFUcen_VIFU{:s}.txt'.format(CAM_IFU_DICT[uca])
+            IFUcen_file_fn = op.join(IFUcen_dir, IFUcen_file)
+            shutil.copy(op.join(IFUcen_dir, IFUcen_file),
+                        op.join(redux_dir, IFUcen_file))
+            cmd.append('cp {:s} {:s}'.format(op.join(IFUcen_dir, IFUcen_file),
+                                             op.join(redux_dir, IFUcen_file)))
+            side = SPECBIG[0]
+
+            # must be sorted by time so dithers line up
+
+            time_sorted_vframes = sorted(vframesselect, key=lambda x: x.time)
+
+            dither_number = 0
+            for v in time_sorted_vframes:
+                dither_number += 1
+                output_fn = op.join(op.abspath(redux_dir),
+                                    "d{:s}_i{:s}".format(str(dither_number), v.ifuslot))
+                ditherfile_fn = op.join(op.abspath(redux_dir),
+                                        "dither_{:s}_{:s}.txt".format(v.ifuslot,
+                                                                      v.basename))
+                print("Creating {:s}".format(ditherfile_fn))
+                ditherfile = open(ditherfile_fn, 'w')
+                ditherinfo.writeHeader(ditherfile)
+                dither_fn = op.join(op.abspath(redux_dir), sci_dir,
+                                    "{:s}{:s}_{:s}_{:s}".format(
+                                        v.actionbase[side],
+                                        v.basename, v.ifuslot,
+                                        v.type))
+                modelbase = op.join(op.abspath(args.cal_dir),
+                                    "{:s}_{:s}".format(basetrace, v.specid))
+                if op.exists(modelbase + "_L.dist") and op.exists(modelbase + "_R.dist"):
+                    ditherinfo.writeDither(ditherfile, dither_fn, modelbase,
+                                           0.00, 0.00, 1.50, 1.00, 1.22)
+                    # extra options ... continuum detect only, so turn off point sources
+                    cmd = CC.detect(IFUcen_file_fn, ditherfile_fn, output_fn,
+                                    "--detect-point-sources -S 2.0 -c 2.5", cmd, run=args.run_insitu)
 
         # Run detect
         if args.detect:
