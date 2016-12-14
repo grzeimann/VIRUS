@@ -69,9 +69,9 @@ if usemapping:
 
 
 # Default set of spectrographs for reduction
-# Not used as far as I can tell
-# SPECID = ["004","008","012","013","016","017","020","024","025","027","032",
-#          "037","038","041","047","051"]
+# only used if not specified on command line
+SPECID = ["004","008","012","013","016","017","020","024","025","027","032",
+          "037","038","041","047","051"]
 
 SPEC = ["LL","LU","RL","RU"]
 SPECBIG = ["L","R"]  
@@ -90,7 +90,7 @@ def find_fplane(date): #date as yyyymmdd string
         -------
             fully qualified filename of fplane file
     """
-    #todo: check date
+    #todo: validate date
 
     filepath = fplanedir
     if filepath[-1] != "/":
@@ -130,7 +130,7 @@ def build_fplane_dicts(fqfn):
             specid to ifuid dictionary
         """
     # IFUSLOT X_FP   Y_FP   SPECID SPECSLOT IFUID IFUROT PLATESC
-    if fqgn is None:
+    if fqfn is None:
         print("Error! Cannot build fplane dictionaries. No fplane file.")
         return {},{}
 
